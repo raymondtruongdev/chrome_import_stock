@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Auto Import Text",
+  "version": "1.0",
+  "description": "Fill text field and click Add button on current page",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "main.html",
+    "default_icon": "ico_upload.png"
+  }
+}
