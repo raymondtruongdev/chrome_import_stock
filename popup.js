@@ -1,28 +1,65 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const textInput = document.getElementById("textInput");
+  const importBtn = document.getElementById("importFireAntBtn");
+  const getVNDBtn = document.getElementById("getVNDBtn");
 
-document.getElementById("importBtn").addEventListener("click", async () => {
-  const rawText = document.getElementById("textInput").value;
-  if (!rawText) return;
-
-  // Extract words
-  const words = rawText
-    .split(",")
-    .map(w => w.trim())
-    .filter(Boolean);
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  // Inject content script (once)
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ["content.js"]
+  // ==============================
+  // 🔁 AUTO LOAD SAVED DATA
+  // ==============================
+  chrome.storage.local.get(["stockList"], ({ stockList }) => {
+    if (stockList) textInput.value = stockList;
   });
 
-  // Send word list once
-  chrome.tabs.sendMessage(tab.id, {
-    type: "START_PROCESS",
-    words,
-    delay: 200
+  // ==============================
+  // 🔧 HELPER: get active tab + inject
+  // ==============================
+  async function getTabId() {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
+    });
+
+    return tab.id;
+  }
+
+  // ==============================
+  // ▶ IMPORT SYMBOLS TO FIREANT
+  // ==============================
+  importBtn.addEventListener("click", async () => {
+    const words = textInput.value
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+
+    if (!words.length) return;
+
+    const tabId = await getTabId();
+
+    chrome.tabs.sendMessage(tabId, {
+      type: "IMPORT_TO_FIREANT",
+      words,
+      delay: 200,
+    });
+  });
+
+  // ==============================
+  // 📥 GET VNDirect DATA
+  // ==============================
+  getVNDBtn.addEventListener("click", async () => {
+    const tabId = await getTabId();
+
+    chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
+      if (!res?.symbols?.length) return;
+
+      const text = res.symbols.join(",");
+      textInput.value = text;
+
+      chrome.storage.local.set({ stockList: text });
+    });
   });
 });
-
-
