@@ -36,76 +36,74 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     });
   }
 
-  function addSymbolFireant(symbols) {
+  async function addSymbolFireant(symbols) {
     const delay = 200;
-    (async () => {
-      console.log("[CONTENT] Symbols will be deleted:", symbols);
+    console.log("[CONTENT] Symbols will be deleted:", symbols);
 
-      const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
+    const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
 
-      const addBtn = [...document.querySelectorAll("button")].find(
-        (btn) => btn.textContent.trim() === "Thêm mã CK"
-      );
+    const addBtn = [...document.querySelectorAll("button")].find(
+      (btn) => btn.textContent.trim() === "Thêm mã CK"
+    );
 
-      if (addBtn) {
-        addBtn.click();
-        await sleep(100);
+    if (addBtn) {
+      addBtn.click();
+      await sleep(100);
+    }
+
+    for (const word of symbols) {
+      const input = document.querySelector(inputSelector);
+      if (!input) {
+        console.error("[AUTO] Input not found");
+        break;
       }
 
-      for (const word of symbols) {
-        const input = document.querySelector(inputSelector);
-        if (!input) {
-          console.error("[AUTO] Input not found");
-          break;
-        }
+      input.focus();
+      input.value = word;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
 
-        input.focus();
-        input.value = word;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-
-        try {
-          const items = await waitForLoadingFireAntMenu();
-          items[0].click();
-          console.log("[AUTO] Added:", word);
-        } catch {
-          console.warn("[AUTO] Menu not found:", word);
-        }
-        await sleep(delay);
+      try {
+        const items = await waitForLoadingFireAntMenu();
+        items[0].click();
+        console.log("[AUTO] Added:", word);
+      } catch {
+        console.warn("[AUTO] Menu not found:", word);
       }
-    })();
+
+      await sleep(delay);
+    }
   }
 
-  function addSymbolVndirect(symbols) {
-    (async () => {
-      console.log("[CONTENT] Symbols will be added:", symbols);
-      const input = document.querySelector(
-        'input.react-autosuggest__input[placeholder="Nhập mã CK..."]'
-      );
+  async function addSymbolVndirect(symbols) {
+    console.log("[CONTENT] Symbols will be added:", symbols);
+    const input = document.querySelector(
+      'input.react-autosuggest__input[placeholder="Nhập mã CK..."]'
+    );
 
-      const addBtn = document
-        .querySelector('button.button[type="submit"] i.fa-plus')
-        ?.closest("button");
+    const addBtn = document
+      .querySelector('button.button[type="submit"] i.fa-plus')
+      ?.closest("button");
 
-      for (const word of symbols) {
-        if (!input) {
-          console.error("[AUTO] Input not found");
-          break;
-        }
-
-        input.focus();
-        input.value = word;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-        console.log("[AUTO] Added:", word);
-
-        if (addBtn) {
-          addBtn.click();
-          await sleep(50);
-          input.value = "";
-        }
+    for (const word of symbols) {
+      if (!input) {
+        console.error("[AUTO] Input not found");
+        break;
       }
-    })();
+
+      input.focus();
+      input.value = word;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      console.log("[AUTO] Added:", word);
+
+      if (addBtn) {
+        await sleep(100);
+        addBtn.click();
+        
+        input.value = "";
+      }
+    }
   }
 
   // ==================
@@ -139,11 +137,13 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     if (message.type === "IMPORT_TO_FIREANT") {
       const { symbols } = message;
 
-      addSymbolFireant(symbols);
+      (async () => {
+        await addSymbolFireant(symbols);
 
-      chrome.runtime.sendMessage({
-        type: "IMPORT_FIREANT_DONE",
-      });
+        chrome.runtime.sendMessage({
+          type: "IMPORT_FIREANT_DONE",
+        });
+      })();
 
       return true;
     }
@@ -157,13 +157,14 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         (a) => a.textContent.trim()
       );
 
-      if (symbols?.length) {
-        addSymbolFireant(symbols);
-      }
-
-      chrome.runtime.sendMessage({
-        type: "CLEAR_FIREANT_DONE",
-      });
+      (async () => {
+        if (symbols?.length) {
+          await addSymbolFireant(symbols);
+        }
+        chrome.runtime.sendMessage({
+          type: "CLEAR_FIREANT_DONE",
+        });
+      })();
 
       return true; // keep message channel alive
     }
@@ -195,11 +196,13 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     if (message.type === "IMPORT_TO_VNDIRECT") {
       const { symbols } = message;
 
-      addSymbolVndirect(symbols);
+      (async () => {
+        await addSymbolVndirect(symbols);
 
-      chrome.runtime.sendMessage({
-        type: "IMPORT_VNDIRECT_DONE",
-      });
+        chrome.runtime.sendMessage({
+          type: "IMPORT_VNDIRECT_DONE",
+        });
+      })();
 
       return true;
     }

@@ -172,6 +172,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       case "IMPORT_FIREANT_DONE":
         setButtonInNormal(importFireantBtn, "Import Fireant");
+        window.close();
         break;
 
       case "CLEAR_FIREANT_DONE":
@@ -184,6 +185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       case "IMPORT_VNDIRECT_DONE":
         setButtonInNormal(importVndBtn, "Import Vndirect");
+        window.close();
         break;
 
       case "CLEAR_VNDIRECT_DONE":
