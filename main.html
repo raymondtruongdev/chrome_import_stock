@@ -59,7 +59,12 @@
       }
 
       .btn-secondary {
-        background: #10b981;
+        background: #00865a;
+        color: white;
+      }
+
+      .btn-third {
+        background: #db2e48;
         color: white;
       }
 
@@ -80,6 +85,17 @@
         background: #e5e7eb;
         margin: 10px 0;
       }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .btn-row .btn {
+        width: 100%; /* each button takes 50% */
+        margin-bottom: 0;
+      }
     </style>
   </head>
 
@@ -89,13 +105,20 @@
     <label for="stockListText">Stock symbols</label>
     <input type="text" id="stockListText" placeholder="E.G: FPT, HPG, SSI" />
 
-    <button class="btn btn-primary" id="importFireantBtn">
-      Import Fireant
-    </button>
+    <div class="divider"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="getVndBtn">Get Vndirect</button>
+
+    </div>
 
     <div class="divider"></div>
 
-    <button class="btn btn-secondary" id="getVndBtn">Get Vndirect Data</button>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="getFireantBtn">Get Fireant</button>
+      <button class="btn btn-primary" id="importFireantBtn">Import Fireant</button>
+      <button class="btn btn-third" id="clearFireantBtn">Clear Fireant</button>
+    </div>
 
     <script src="popup.js"></script>
   </body>

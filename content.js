@@ -36,58 +36,105 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     });
   }
 
+  function addSymbolFireant(words) {
+    const delay = 200;
+    (async () => {
+      console.log("[CONTENT] Symbols will be deleted:", words);
+
+      const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
+
+      const addBtn = [...document.querySelectorAll("button")].find(
+        (btn) => btn.textContent.trim() === "Thêm mã CK"
+      );
+
+      if (addBtn) {
+        addBtn.click();
+        await sleep(100);
+      }
+
+      for (const word of words) {
+        const input = document.querySelector(inputSelector);
+        if (!input) {
+          console.error("[AUTO] Input not found");
+          break;
+        }
+
+        input.focus();
+        input.value = word;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+
+        try {
+          const items = await waitForLoadingFireAntMenu();
+          items[0].click();
+          console.log("[AUTO] Added:", word);
+        } catch {
+          console.warn("[AUTO] Menu not found:", word);
+        }
+        await sleep(delay);
+      }
+    })();
+  }
+
   // ==================
   // Message Listener
   // ==================
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    
+    // ========================================
+    // 📥 GET STOCK LIST FROM FIREANT
+    // ========================================
+    if (message.type === "GET_STOCK_LIST_FIREANT") {
+      // Get list symbol in current webpage, need remove 1st element because it is a
+      // symbol of current chart maybe not in the list
+      const symbols = Array.from(
+        document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
+        (a) => a.textContent.trim()
+      ).slice(1);
+
+      console.log("[CONTENT] Symbols:", symbols);
+
+      sendResponse({ symbols });
+
+      chrome.runtime.sendMessage({
+        type: "GET_FIREANT_DONE",
+      });
+
+      return true;
+    }
     // ====================================
     // ▶ IMPORT TO FIREANT
     // ====================================
     if (message.type === "IMPORT_TO_FIREANT") {
-      const { words, delay } = message;
+      const { words } = message;
 
-      (async () => {
-        const inputSelector =
-          'input[placeholder="Thêm mã CK vào watchlist..."]';
+      addSymbolFireant(words);
 
-        const addBtn = [...document.querySelectorAll("button")].find(
-          (btn) => btn.textContent.trim() === "Thêm mã CK"
-        );
-
-        if (addBtn) {
-          addBtn.click();
-          await sleep(100);
-        }
-
-        for (const word of words) {
-          const input = document.querySelector(inputSelector);
-          if (!input) {
-            console.error("[AUTO] Input not found");
-            break;
-          }
-
-          input.focus();
-          input.value = word;
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.dispatchEvent(new Event("change", { bubbles: true }));
-
-          try {
-            const items = await waitForLoadingFireAntMenu();
-            items[0].click();
-            console.log("[AUTO] Added:", word);
-          } catch {
-            console.warn("[AUTO] Menu not found:", word);
-          }
-
-          await sleep(delay);
-        }
-
-        chrome.runtime.sendMessage({
-          type: "IMPORT_FIREANT_DONE",
-        });
-      })();
+      chrome.runtime.sendMessage({
+        type: "IMPORT_FIREANT_DONE",
+      });
 
       return true;
+    }
+
+    // ====================================
+    // ▶ CLEAR FIREANT
+    // ====================================
+    if (message.type === "CLEAR_FIREANT") {
+      const symbols = Array.from(
+        document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
+        (a) => a.textContent.trim()
+      ).slice(1);
+
+      if (symbols?.length) {
+        addSymbolFireant(symbols);
+      }
+
+      chrome.runtime.sendMessage({
+        type: "CLEAR_FIREANT_DONE",
+      });
+
+      return true; // keep message channel alive
     }
 
     // ========================================

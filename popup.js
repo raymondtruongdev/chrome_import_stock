@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const stockListText = document.getElementById("stockListText");
   const importFireantBtn = document.getElementById("importFireantBtn");
+  const clearFireantBtn = document.getElementById("clearFireantBtn");
   const getVndBtn = document.getElementById("getVndBtn");
+  const getFireantBtn = document.getElementById("getFireantBtn");
 
   let activeTabId = null;
 
@@ -65,7 +67,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.tabs.sendMessage(tabId, {
       type: "IMPORT_TO_FIREANT",
       words,
-      delay: 200,
+    });
+  });
+
+  // ==============================
+  // ▶ CLEAR  FIREANT SYMBOLS
+  // ==============================
+  clearFireantBtn.addEventListener("click", async () => {
+    setButtonInProcessing(clearFireantBtn);
+    const tabId = await initActiveTab();
+    chrome.tabs.sendMessage(tabId, {
+      type: "CLEAR_FIREANT",
     });
   });
 
@@ -88,23 +100,56 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
+  // 📥 GET FIREANT DATA
+  // ==============================
+
+  getFireantBtn.addEventListener("click", async () => {
+    setButtonInProcessing(getFireantBtn);
+
+    const tabId = await initActiveTab();
+
+    chrome.tabs.sendMessage(
+      tabId,
+      { type: "GET_STOCK_LIST_FIREANT" },
+      (res) => {
+        if (!res?.symbols?.length) {
+            stockListText.value = [];
+             chrome.storage.local.set({ stockList: [] });
+          return;
+        }
+
+        const text = res.symbols.join(",");
+        stockListText.value = text;
+
+        chrome.storage.local.set({ stockList: text });
+      }
+    );
+  });
+
+  // ==============================
   // 🔔 Listen for completion
   // ==============================
 
   chrome.runtime.onMessage.addListener((message) => {
-  switch (message.type) {
-    case "IMPORT_FIREANT_DONE":
-      setButtonInNormal(importFireantBtn, "Import Fireant");
-      break;
+    switch (message.type) {
+      case "IMPORT_FIREANT_DONE":
+        setButtonInNormal(importFireantBtn, "Import Fireant");
+        break;
 
-    case "GET_VNDIRECT_DONE":
-      setButtonInNormal(getVndBtn, "Get Vndirect Data");
-      break;
+      case "GET_VNDIRECT_DONE":
+        setButtonInNormal(getVndBtn, "Get Vndirect");
+        break;
 
-    default:
+      case "GET_FIREANT_DONE":
+        setButtonInNormal(getFireantBtn, "Get Fireant");
+        break;
 
-      break;
-  }
-});
+      case "CLEAR_FIREANT_DONE":
+        setButtonInNormal(clearFireantBtn, "Clear Fireant");
+        break;
 
+      default:
+        break;
+    }
+  });
 });
