@@ -1,13 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const textInput = document.getElementById("textInput");
-  const importBtn = document.getElementById("importFireAntBtn");
-  const getVNDBtn = document.getElementById("getVNDBtn");
+  const stockListText = document.getElementById("stockListText");
+  const importFireantBtn = document.getElementById("importFireantBtn");
+  const getVndBtn = document.getElementById("getVndBtn");
 
   // ==============================
   // 🔁 AUTO LOAD SAVED DATA
   // ==============================
   chrome.storage.local.get(["stockList"], ({ stockList }) => {
-    if (stockList) textInput.value = stockList;
+    if (stockList) stockListText.value = stockList;
   });
 
   // ==============================
@@ -30,8 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==============================
   // ▶ IMPORT SYMBOLS TO FIREANT
   // ==============================
-  importBtn.addEventListener("click", async () => {
-    const words = textInput.value
+  importFireantBtn.addEventListener("click", async () => {
+    const words = stockListText.value
       .split(",")
       .map((w) => w.trim())
       .filter(Boolean);
@@ -48,16 +48,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==============================
-  // 📥 GET VNDirect DATA
+  // 📥 GET VNDIRECT DATA
   // ==============================
-  getVNDBtn.addEventListener("click", async () => {
+  getVndBtn.addEventListener("click", async () => {
+    getVndBtn.ariaDisabled = true;
     const tabId = await getTabId();
 
     chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
       if (!res?.symbols?.length) return;
 
       const text = res.symbols.join(",");
-      textInput.value = text;
+      stockListText.value = text;
 
       chrome.storage.local.set({ stockList: text });
     });

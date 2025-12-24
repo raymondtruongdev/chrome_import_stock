@@ -1,6 +1,4 @@
-let isRunning = false;
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function waitForLoadingFireAntMenu(timeout = 2000) {
   return new Promise((resolve, reject) => {
@@ -30,11 +28,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ▶ START IMPORT TO FIREANT STOCK LIST
   // ====================================
   if (message.type === "IMPORT_TO_FIREANT") {
-    if (isRunning) {
-      return;
-    }
-
-    isRunning = true;
     const { words, delay } = message;
 
     const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
@@ -76,8 +69,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
        // ⏳ Wait while page processes word
         await sleep(delay);
       }
-
-      isRunning = false;
     })();
   }
 
