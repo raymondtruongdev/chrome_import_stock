@@ -100,7 +100,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       if (addBtn) {
         await sleep(100);
         addBtn.click();
-        
+
         input.value = "";
       }
     }
@@ -114,12 +114,16 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // 📥 GET STOCK LIST FROM FIREANT
     // ========================================
     if (message.type === "GET_STOCK_LIST_FIREANT") {
-      // Get list symbol in current webpage, need remove 1st element because it is a
-      // symbol of current chart maybe not in the list
-      const symbols = Array.from(
-        document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
-        (a) => a.textContent.trim()
-      );
+      // const symbols = Array.from(
+      //   document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
+      //   (a) => a.textContent.trim()
+      // );
+      const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
+        .map((div) => {
+          const a = div.querySelector('a[href^="/charts/content/symbols/"]');
+          return a ? a.textContent.trim() : null;
+        })
+        .filter(Boolean);
 
       console.log("[CONTENT] Symbols:", symbols);
 
@@ -152,11 +156,13 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ▶ CLEAR FIREANT
     // ====================================
     if (message.type === "CLEAR_FIREANT") {
-      const symbols = Array.from(
-        document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
-        (a) => a.textContent.trim()
-      );
-
+      const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
+        .map((div) => {
+          const a = div.querySelector('a[href^="/charts/content/symbols/"]');
+          return a ? a.textContent.trim() : null;
+        })
+        .filter(Boolean);
+        
       (async () => {
         if (symbols?.length) {
           await addSymbolFireant(symbols);
