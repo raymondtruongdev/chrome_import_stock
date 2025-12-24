@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==============================
-  // 🔧 HELPER: get active tab + inject
+  // 🔧 Utils
   // ==============================
   async function getTabId() {
     const [tab] = await chrome.tabs.query({
@@ -27,16 +27,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return tab.id;
   }
 
+  function setButtonInNormal(btn, text = "Button") {
+    btn.disabled = false;
+    btn.textContent = text;
+  }
+
+  function setButtonInProcessing(btn, text = "Processing...") {
+    btn.disabled = true;
+    btn.textContent = text;
+  }
+
   // ==============================
   // ▶ IMPORT SYMBOLS TO FIREANT
   // ==============================
+
   importFireantBtn.addEventListener("click", async () => {
+    // Disable button
+    setButtonInProcessing(importFireantBtn);
+
     const words = stockListText.value
       .split(",")
       .map((w) => w.trim())
       .filter(Boolean);
 
-    if (!words.length) return;
+    if (!words.length) {
+      setButtonInNormal(importFireantBtn, "Import Fireant");
+      return;
+    }
 
     const tabId = await getTabId();
 
@@ -47,11 +64,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Listen for completion message
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "IMPORT_FIREANT_DONE") {
+      setButtonInNormal(importFireantBtn, "Import Fireant");
+    }
+    if (message.type === "GET_VNDIRECT_DONE") {
+      setButtonInNormal(getVndBtn, "Get Vndirect Data");
+    }
+  });
+
   // ==============================
   // 📥 GET VNDIRECT DATA
   // ==============================
   getVndBtn.addEventListener("click", async () => {
-    getVndBtn.ariaDisabled = true;
+     // Disable button
+    setButtonInProcessing(getVndBtn);
+
     const tabId = await getTabId();
 
     chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
