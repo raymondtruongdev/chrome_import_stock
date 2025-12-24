@@ -76,11 +76,42 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     })();
   }
 
+  function addSymbolVndirect(words) {
+    (async () => {
+      console.log("[CONTENT] Symbols will be added:", words);
+      const input = document.querySelector(
+        'input.react-autosuggest__input[placeholder="Nhập mã CK..."]'
+      );
+
+      const addBtn = document
+        .querySelector('button.button[type="submit"] i.fa-plus')
+        ?.closest("button");
+
+      for (const word of words) {
+        if (!input) {
+          console.error("[AUTO] Input not found");
+          break;
+        }
+
+        input.focus();
+        input.value = word;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        console.log("[AUTO] Added:", word);
+
+        if (addBtn) {
+          addBtn.click();
+          await sleep(50);
+          input.value = "";
+        }
+      }
+    })();
+  }
+
   // ==================
   // Message Listener
   // ==================
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    
     // ========================================
     // 📥 GET STOCK LIST FROM FIREANT
     // ========================================
@@ -90,7 +121,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       const symbols = Array.from(
         document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
         (a) => a.textContent.trim()
-      ).slice(1);
+      );
 
       console.log("[CONTENT] Symbols:", symbols);
 
@@ -124,7 +155,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       const symbols = Array.from(
         document.querySelectorAll('a[href^="/charts/content/symbols/"]'),
         (a) => a.textContent.trim()
-      ).slice(1);
+      );
 
       if (symbols?.length) {
         addSymbolFireant(symbols);
@@ -156,6 +187,60 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       });
 
       return true;
+    }
+
+    // ====================================
+    // ▶ IMPORT TO VNDIRECT
+    // ====================================
+    if (message.type === "IMPORT_TO_VNDIRECT") {
+      const { words } = message;
+
+      addSymbolVndirect(words);
+
+      chrome.runtime.sendMessage({
+        type: "IMPORT_VNDIRECT_DONE",
+      });
+
+      return true;
+    }
+
+    // ====================================
+    // ▶ CLEAR VNDIRECT
+    // ====================================
+    if (message.type === "CLEAR_VNDIRECT") {
+      const tbody = document.getElementById("banggia-khop-lenh-body");
+      if (!tbody) {
+        console.warn("[EXT] Table body not found");
+        return;
+      }
+
+      const symbols = tbody
+        ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean)
+        : [];
+
+      console.log("[CONTENT] Symbols:", symbols);
+
+      // async remove one-by-one
+      (async () => {
+        for (const symbol of symbols) {
+          if (typeof window.removeSymbolFromBoard === "function") {
+            window.removeSymbolFromBoard(symbol);
+            console.log("[EXT] Removed:", symbol);
+          } else {
+            // fallback: click
+            tbody.querySelector(`tr#${CSS.escape(symbol)} a.remove`)?.click();
+          }
+
+          // wait DOM update
+          await new Promise((r) => setTimeout(r, 100));
+        }
+
+        // notify background AFTER done
+        chrome.runtime.sendMessage({
+          type: "CLEAR_VNDIRECT_DONE",
+        });
+      })();
+      return true; // keep message channel alive
     }
   });
 }
