@@ -54,7 +54,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     for (const word of symbols) {
       const input = document.querySelector(inputSelector);
       if (!input) {
-        console.error("[AUTO] Input not found");
+        console.warn("[CONTENT] Fireant table input not found");
         break;
       }
 
@@ -87,7 +87,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
     for (const word of symbols) {
       if (!input) {
-        console.error("[AUTO] Input not found");
+        console.warn("[CONTENT] Vndirect table input not found");
         break;
       }
 
@@ -219,7 +219,11 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     if (message.type === "CLEAR_VNDIRECT") {
       const tbody = document.getElementById("banggia-khop-lenh-body");
       if (!tbody) {
-        console.warn("[EXT] Table body not found");
+        console.warn("[CONTENT] Vndirect Table body not found");
+        // notify background AFTER done
+        chrome.runtime.sendMessage({
+          type: "CLEAR_VNDIRECT_DONE",
+        });
         return;
       }
 
@@ -234,7 +238,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         for (const symbol of symbols) {
           if (typeof window.removeSymbolFromBoard === "function") {
             window.removeSymbolFromBoard(symbol);
-            console.log("[EXT] Removed:", symbol);
+            console.log("[CONTENT] Removed:", symbol);
           } else {
             // fallback: click
             tbody.querySelector(`tr#${CSS.escape(symbol)} a.remove`)?.click();
