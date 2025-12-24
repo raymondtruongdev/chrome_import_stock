@@ -52,25 +52,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   getFireantBtn.addEventListener("click", async () => {
     setButtonInProcessing(getFireantBtn);
-
     const tabId = await initActiveTab();
-
-    chrome.tabs.sendMessage(
-      tabId,
-      { type: "GET_STOCK_LIST_FIREANT" },
-      (res) => {
-        if (!res?.symbols?.length) {
-          stockListText.value = [];
-          chrome.storage.local.set({ stockList: [] });
-          return;
-        }
-
-        const text = res.symbols.join(",");
-        stockListText.value = text;
-
-        chrome.storage.local.set({ stockList: text });
+    var text = [];
+    chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_FIREANT" }, (res) => {
+      if (res?.symbols?.length) {
+        text = res.symbols.join(",");
       }
-    );
+      stockListText.value = text;
+      chrome.storage.local.set({ stockList: text });
+    });
   });
 
   // ==============================
@@ -112,16 +102,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 📥 GET VNDIRECT DATA
   // ==============================
   getVndBtn.addEventListener("click", async () => {
+  
     setButtonInProcessing(getVndBtn);
 
     const tabId = await initActiveTab();
+    var text = [];
 
     chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
-      if (!res?.symbols?.length) return;
-
-      const text = res.symbols.join(",");
+      if (res?.symbols?.length) {
+        text = res.symbols.join(",");
+      }
       stockListText.value = text;
-
       chrome.storage.local.set({ stockList: text });
     });
   });
