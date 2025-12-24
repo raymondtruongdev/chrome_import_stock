@@ -90,13 +90,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // 🔔 Listen for completion
   // ==============================
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === "IMPORT_FIREANT_DONE") {
-      setButtonInNormal(importFireantBtn, "Import Fireant");
-    }
 
-    if (message.type === "GET_VNDIRECT_DONE") {
+  chrome.runtime.onMessage.addListener((message) => {
+  switch (message.type) {
+    case "IMPORT_FIREANT_DONE":
+      setButtonInNormal(importFireantBtn, "Import Fireant");
+      break;
+
+    case "GET_VNDIRECT_DONE":
       setButtonInNormal(getVndBtn, "Get Vndirect Data");
-    }
-  });
+      break;
+
+    default:
+
+      break;
+  }
+});
+
 });
