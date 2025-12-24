@@ -79,12 +79,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   importFireantBtn.addEventListener("click", async () => {
     setButtonInProcessing(importFireantBtn);
 
-    const words = stockListText.value
+    const symbols = stockListText.value
       .split(",")
       .map((w) => w.trim())
       .filter(Boolean);
 
-    if (!words.length) {
+    if (!symbols.length) {
       setButtonInNormal(importFireantBtn, "Import Fireant");
       return;
     }
@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     chrome.tabs.sendMessage(tabId, {
       type: "IMPORT_TO_FIREANT",
-      words,
+      symbols,
     });
   });
 
@@ -131,12 +131,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   importVndBtn.addEventListener("click", async () => {
     setButtonInProcessing(importVndBtn);
 
-    const words = stockListText.value
+    const symbols = stockListText.value
       .split(",")
       .map((w) => w.trim())
       .filter(Boolean);
 
-    if (!words.length) {
+    if (!symbols.length) {
       setButtonInNormal(importVndBtn, "Import Vndirect");
       return;
     }
@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     chrome.tabs.sendMessage(tabId, {
       type: "IMPORT_TO_VNDIRECT",
-      words,
+      symbols,
     });
   });
 

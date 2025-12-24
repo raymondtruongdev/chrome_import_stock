@@ -36,10 +36,10 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     });
   }
 
-  function addSymbolFireant(words) {
+  function addSymbolFireant(symbols) {
     const delay = 200;
     (async () => {
-      console.log("[CONTENT] Symbols will be deleted:", words);
+      console.log("[CONTENT] Symbols will be deleted:", symbols);
 
       const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
 
@@ -52,7 +52,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         await sleep(100);
       }
 
-      for (const word of words) {
+      for (const word of symbols) {
         const input = document.querySelector(inputSelector);
         if (!input) {
           console.error("[AUTO] Input not found");
@@ -76,9 +76,9 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     })();
   }
 
-  function addSymbolVndirect(words) {
+  function addSymbolVndirect(symbols) {
     (async () => {
-      console.log("[CONTENT] Symbols will be added:", words);
+      console.log("[CONTENT] Symbols will be added:", symbols);
       const input = document.querySelector(
         'input.react-autosuggest__input[placeholder="Nhập mã CK..."]'
       );
@@ -87,7 +87,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         .querySelector('button.button[type="submit"] i.fa-plus')
         ?.closest("button");
 
-      for (const word of words) {
+      for (const word of symbols) {
         if (!input) {
           console.error("[AUTO] Input not found");
           break;
@@ -137,9 +137,9 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ▶ IMPORT TO FIREANT
     // ====================================
     if (message.type === "IMPORT_TO_FIREANT") {
-      const { words } = message;
+      const { symbols } = message;
 
-      addSymbolFireant(words);
+      addSymbolFireant(symbols);
 
       chrome.runtime.sendMessage({
         type: "IMPORT_FIREANT_DONE",
@@ -193,9 +193,9 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ▶ IMPORT TO VNDIRECT
     // ====================================
     if (message.type === "IMPORT_TO_VNDIRECT") {
-      const { words } = message;
+      const { symbols } = message;
 
-      addSymbolVndirect(words);
+      addSymbolVndirect(symbols);
 
       chrome.runtime.sendMessage({
         type: "IMPORT_VNDIRECT_DONE",
