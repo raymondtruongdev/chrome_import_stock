@@ -6,6 +6,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const getVndBtn = document.getElementById("getVndBtn");
   const importVndBtn = document.getElementById("importVndBtn");
   const clearVndBtn = document.getElementById("clearVndBtn");
+  const getVPSListBtn = document.getElementById("getVPSList");
+  const copyTextboxBtn = document.getElementById("copyTextboxBtn");
+  const clearTextboxBtn = document.getElementById("clearTextboxBtn");
 
   let activeTabId = null;
 
@@ -47,6 +50,70 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.disabled = true;
     btn.textContent = text;
   }
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      console.log("TSV copied to clipboard");
+    } catch (err) {
+      console.error("Clipboard copy failed", err);
+    }
+  }
+
+  function showCopiedToast(anchorEl, text = "Copied to clipboard", mode = "corner") {
+  const toast = document.createElement("div");
+  toast.className = "copy-toast";
+  toast.textContent = text;
+
+  document.body.appendChild(toast);
+
+  if (mode === "button" && anchorEl) {
+    // 🔹 Toast theo vị trí button
+    toast.style.position = "absolute";
+
+    const rect = anchorEl.getBoundingClientRect();
+    toast.style.left = `${rect.left + rect.width / 2}px`;
+    toast.style.top = `${rect.top - 6}px`;
+    toast.style.transform = "translate(-50%, 100%)";
+  } else {
+    // 🔹 Toast góc phải trên
+    toast.style.position = "fixed";
+    toast.style.top = "8px";
+    toast.style.right = "8px";
+    toast.style.transform = "translateY(-6px)";
+  }
+
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 200);
+  }, 2000);
+}
+
+    
+  // ==============================
+  //  CLEAR TEXTBOX CONTENT
+  // ==============================
+  clearTextboxBtn.addEventListener("click", async () => {
+    // Clear UI
+    stockListText.value = "";
+    chrome.storage.local.set({ stockList: "" });
+    
+  });
+
+  // ==============================
+  // COPY TEXTBOX TO CLIPBOARD
+  // ==============================
+  copyTextboxBtn.addEventListener("click", async () => {
+    const text = stockListText.value;
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    showCopiedToast(null, "Copied to clipboard", "corner");
+  });
+
+
   // ==============================
   // 📥 GET FIREANT DATA
   // ==============================
@@ -151,6 +218,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+    // ==============================
+  // ▶ GET VPS LIST
+  // ==============================
+getVPSListBtn.addEventListener("click", async () => {
+  setButtonInProcessing(getVPSListBtn);
+
+  const tabId = await initActiveTab();
+
+  chrome.tabs.sendMessage(
+    tabId,
+    { type: "GET_VPS_LIST" },
+    async (res) => {
+      if (!res || !res.tsv) {
+        console.warn("No TSV received");
+        return;
+      }
+
+      // Show in Textbox
+      stockListText.value = res.tsv;
+
+      // Auto copy to CLIPBOARD 
+      await copyToClipboard(res.tsv);
+
+      // Show TOAST 2s
+      showCopiedToast(getVPSListBtn, "Copied to clipboard", "button");
+
+      // Save to local storage
+      // chrome.storage.local.set({stockList: res.tsv,});
+
+    }
+  );
+});
+
+
+
+
   // ==============================
   // 🔔 Listen for completion
   // ==============================
@@ -183,8 +286,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         setButtonInNormal(clearVndBtn, "Clear Vndirect");
         break;
 
+      case "GET_VPS_LIST_DONE":
+        setButtonInNormal(getVPSListBtn, "Get VPS List");
+        break;
+
       default:
         break;
     }
-  });
+  }); 
 });
+

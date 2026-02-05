@@ -255,5 +255,67 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       })();
       return true; // keep message channel alive
     }
+
+
+    // ====================================
+    // GET VPS LIST
+    // ====================================
+    if (message.type === "GET_VPS_LIST") {
+      const table = document.querySelector(
+        'table[data-testid="portfolio-table-table"]',
+      );
+
+      if (!table) {
+        console.warn("[CONTENT] VPS portfolio table not found");
+        sendResponse({ tsv: "", headers: [], rows: [] });
+        return true;
+      }
+      // 1. Parse headers
+      const headers = [...table.querySelectorAll("thead th")]
+        .map((th) =>
+          th.innerText.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
+        )
+        .filter(Boolean);
+
+      // 2. Parse body rows
+      const body = table.querySelector(
+        'tbody[data-testid="portfolio-table-body"]',
+      );
+
+      const rows = body
+        ? [...body.querySelectorAll("tr")].map((tr) =>
+            [...tr.querySelectorAll("td")].map((td) =>
+              td.innerText.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
+            ),
+          )
+        : [];
+
+      // 3. Build TSV (TAB separated)
+      const tsvLines = [];
+      // header
+      tsvLines.push(headers.join("\t"));
+      // rows
+      rows.forEach((row) => {
+        tsvLines.push(row.join("\t"));
+      });
+      const tsv = tsvLines.join("\n");
+
+      console.log("[CONTENT] VPS TSV generated");
+      console.log(tsv);
+
+      // 4. Response
+      sendResponse({
+        headers,
+        rows,
+        tsv,
+      });
+      // notify background AFTER done
+      chrome.runtime.sendMessage({
+        type: "GET_VPS_LIST_DONE",
+      });
+
+      return true;
+    }
+
   });
 }
