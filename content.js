@@ -106,6 +106,49 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
   }
 
+  const normalizeText = (text = "") =>
+    text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+
+  const buildTSV = (headers, rows) =>
+    [headers.join("\t"), ...rows.map((r) => r.join("\t"))].join("\n");
+
+  const respondEmpty = (sendResponse) => {
+    sendResponse({ tsv: "", headers: [], rows: [] });
+  };
+
+  function parseTable({
+    tableSelector,
+    bodySelector = "tbody",
+    headerCleaner,
+  }) {
+    const table = document.querySelector(tableSelector);
+    if (!table) return null;
+
+    // Headers
+    const headers = [...table.querySelectorAll("thead th")]
+      .map((th) => {
+        if (headerCleaner) {
+          const clone = th.cloneNode(true);
+          headerCleaner(clone);
+          return normalizeText(clone.textContent);
+        }
+        return normalizeText(th.innerText);
+      })
+      .filter(Boolean);
+
+    // Rows
+    const body = table.querySelector(bodySelector);
+    const rows = body
+      ? [...body.querySelectorAll("tr")].map((tr) =>
+          [...tr.querySelectorAll("td")].map((td) =>
+            normalizeText(td.innerText || td.textContent),
+          ),
+        )
+      : [];
+
+    return { headers, rows };
+  }
+
   // ==================
   // Message Listener
   // ==================
@@ -259,110 +302,55 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ====================================
     // GET VPS LIST
     // ====================================
-    if (message.type === "GET_VPS_LIST") {
-      const table = document.querySelector(
-        'table[data-testid="portfolio-table-table"]',
-      );
 
-      if (!table) {
+    if (message.type === "GET_VPS_LIST") {
+      const result = parseTable({
+        tableSelector: 'table[data-testid="portfolio-table-table"]',
+        bodySelector: 'tbody[data-testid="portfolio-table-body"]',
+      });
+
+      if (!result) {
         console.warn("[CONTENT] VPS portfolio table not found");
-        sendResponse({ tsv: "", headers: [], rows: [] });
+        respondEmpty(sendResponse);
         return true;
       }
-      // 1. Parse headers
-      const headers = [...table.querySelectorAll("thead th")]
-        .map((th) =>
-          th.innerText.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
-        )
-        .filter(Boolean);
 
-      // 2. Parse body rows
-      const body = table.querySelector(
-        'tbody[data-testid="portfolio-table-body"]',
-      );
+      const { headers, rows } = result;
+      const tsv = buildTSV(headers, rows);
 
-      const rows = body
-        ? [...body.querySelectorAll("tr")].map((tr) =>
-            [...tr.querySelectorAll("td")].map((td) =>
-              td.innerText.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
-            ),
-          )
-        : [];
+      console.log("[CONTENT] VPS TSV generated\n", tsv);
 
-      // 3. Build TSV (TAB separated)
-      const tsvLines = [];
-      // header
-      tsvLines.push(headers.join("\t"));
-      // rows
-      rows.forEach((row) => {
-        tsvLines.push(row.join("\t"));
-      });
-      const tsv = tsvLines.join("\n");
+      sendResponse({ headers, rows, tsv });
 
-      console.log("[CONTENT] VPS TSV generated");
-      console.log(tsv);
-
-      // 4. Response
-      sendResponse({
-        headers,
-        rows,
-        tsv,
-      });
-      // notify background AFTER done
-      chrome.runtime.sendMessage({
-        type: "GET_VPS_LIST_DONE",
-      });
-
+      chrome.runtime.sendMessage({ type: "GET_VPS_LIST_DONE" });
       return true;
     }
-
     // ====================================
     // GET VND LIST
     // ====================================
-    if (message.type === "GET_VND_LIST") {
-      const table = document.querySelector("table.portfolio-data");
 
-      if (!table) {
+    if (message.type === "GET_VND_LIST") {
+      const result = parseTable({
+        tableSelector: "table.portfolio-data",
+        headerCleaner: (clone) => {
+          clone.querySelectorAll("i, span").forEach((el) => el.remove());
+        },
+      });
+
+      if (!result) {
         console.warn("[CONTENT] VND portfolio table not found");
-        sendResponse({ tsv: "", headers: [], rows: [] });
+        respondEmpty(sendResponse);
         return true;
       }
 
-      // 1. Parse headers (remove icons)
-      const headers = [...table.querySelectorAll("thead th")].map((th) => {
-        const clone = th.cloneNode(true);
-        clone.querySelectorAll("i, span").forEach((el) => el.remove());
-        return clone.textContent.replace(/\s+/g, " ").trim();
-      });
+      const { headers, rows } = result;
+      const tsv = buildTSV(headers, rows);
 
-      // 2. Parse body rows ONLY (no thead / tfoot)
-      const rows = [...table.querySelectorAll("tbody tr")].map((tr) =>
-        [...tr.querySelectorAll("td")].map((td) =>
-          td.textContent.replace(/\s+/g, " ").trim(),
-        ),
-      );
+      console.log("[CONTENT] VND TSV generated\n", tsv);
 
-      // 3. Build TSV
-      const tsv = [
-        headers.join("\t"),
-        ...rows.map((row) => row.join("\t")),
-      ].join("\n");
+      sendResponse({ headers, rows, tsv });
 
-      console.log("[CONTENT] VND TSV generated");
-      console.log(tsv);
-
-      // 4. Response
-      sendResponse({
-        headers,
-        rows,
-        tsv,
-      });
-
-      // notify background
-      chrome.runtime.sendMessage({
-        type: "GET_VND_LIST_DONE",
-      });
-
+      chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
       return true;
     }
   });
