@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const getVPSListBtn = document.getElementById("getVPSList");
   const copyTextboxBtn = document.getElementById("copyTextboxBtn");
   const clearTextboxBtn = document.getElementById("clearTextboxBtn");
+  const getVndListBtn = document.getElementById("getVndList");
 
   let activeTabId = null;
 
@@ -59,40 +60,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function showCopiedToast(anchorEl, text = "Copied to clipboard", mode = "corner") {
-  const toast = document.createElement("div");
-  toast.className = "copy-toast";
-  toast.textContent = text;
+  function showCopiedToast(
+    anchorEl,
+    text = "Copied to clipboard",
+    mode = "corner",
+  ) {
+    const toast = document.createElement("div");
+    toast.className = "copy-toast";
+    toast.textContent = text;
 
-  document.body.appendChild(toast);
+    document.body.appendChild(toast);
 
-  if (mode === "button" && anchorEl) {
-    // 🔹 Toast theo vị trí button
-    toast.style.position = "absolute";
+    if (mode === "button" && anchorEl) {
+      // 🔹 Toast theo vị trí button
+      toast.style.position = "absolute";
 
-    const rect = anchorEl.getBoundingClientRect();
-    toast.style.left = `${rect.left + rect.width / 2}px`;
-    toast.style.top = `${rect.top - 6}px`;
-    toast.style.transform = "translate(-50%, 100%)";
-  } else {
-    // 🔹 Toast góc phải trên
-    toast.style.position = "fixed";
-    toast.style.top = "8px";
-    toast.style.right = "8px";
-    toast.style.transform = "translateY(-6px)";
+      const rect = anchorEl.getBoundingClientRect();
+      toast.style.left = `${rect.left + rect.width / 2}px`;
+      toast.style.top = `${rect.top - 6}px`;
+      toast.style.transform = "translate(-50%, 100%)";
+    } else {
+      // 🔹 Toast góc phải trên
+      toast.style.position = "fixed";
+      toast.style.top = "8px";
+      toast.style.right = "8px";
+      toast.style.transform = "translateY(-6px)";
+    }
+
+    requestAnimationFrame(() => {
+      toast.classList.add("show");
+    });
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 200);
+    }, 2000);
   }
 
-  requestAnimationFrame(() => {
-    toast.classList.add("show");
-  });
-
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => toast.remove(), 200);
-  }, 2000);
-}
-
-    
   // ==============================
   //  CLEAR TEXTBOX CONTENT
   // ==============================
@@ -100,7 +104,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Clear UI
     stockListText.value = "";
     chrome.storage.local.set({ stockList: "" });
-    
   });
 
   // ==============================
@@ -113,7 +116,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     showCopiedToast(null, "Copied to clipboard", "corner");
   });
 
-
   // ==============================
   // 📥 GET FIREANT DATA
   // ==============================
@@ -121,13 +123,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(getFireantBtn);
     const tabId = await initActiveTab();
     var text = [];
-    chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_FIREANT" }, (res) => {
-      if (res?.symbols?.length) {
-        text = res.symbols.join(",");
-      }
-      stockListText.value = text;
-      chrome.storage.local.set({ stockList: text });
-    });
+    chrome.tabs.sendMessage(
+      tabId,
+      { type: "GET_STOCK_LIST_FIREANT" },
+      (res) => {
+        if (res?.symbols?.length) {
+          text = res.symbols.join(",");
+        }
+        stockListText.value = text;
+        chrome.storage.local.set({ stockList: text });
+      },
+    );
   });
 
   // ==============================
@@ -169,7 +175,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 📥 GET VNDIRECT DATA
   // ==============================
   getVndBtn.addEventListener("click", async () => {
-  
     setButtonInProcessing(getVndBtn);
 
     const tabId = await initActiveTab();
@@ -218,18 +223,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-    // ==============================
+  // ==============================
   // ▶ GET VPS LIST
   // ==============================
-getVPSListBtn.addEventListener("click", async () => {
-  setButtonInProcessing(getVPSListBtn);
+  getVPSListBtn.addEventListener("click", async () => {
+    setButtonInProcessing(getVPSListBtn);
 
-  const tabId = await initActiveTab();
+    const tabId = await initActiveTab();
 
-  chrome.tabs.sendMessage(
-    tabId,
-    { type: "GET_VPS_LIST" },
-    async (res) => {
+    chrome.tabs.sendMessage(tabId, { type: "GET_VPS_LIST" }, async (res) => {
       if (!res || !res.tsv) {
         console.warn("No TSV received");
         return;
@@ -238,7 +240,7 @@ getVPSListBtn.addEventListener("click", async () => {
       // Show in Textbox
       stockListText.value = res.tsv;
 
-      // Auto copy to CLIPBOARD 
+      // Auto copy to CLIPBOARD
       await copyToClipboard(res.tsv);
 
       // Show TOAST 2s
@@ -246,13 +248,33 @@ getVPSListBtn.addEventListener("click", async () => {
 
       // Save to local storage
       // chrome.storage.local.set({stockList: res.tsv,});
+    });
+  });
 
-    }
-  );
-});
+  // ==============================
+  // ▶ GET VND LIST
+  // ==============================
+  getVndListBtn.addEventListener("click", async () => {
+    setButtonInProcessing(getVndListBtn);
 
+    const tabId = await initActiveTab();
 
+    chrome.tabs.sendMessage(tabId, { type: "GET_VND_LIST" }, async (res) => {
+      if (!res || !res.tsv) {
+        console.warn("No TSV received");
+        return;
+      }
 
+      // Show in Textbox
+      stockListText.value = res.tsv;
+
+      // Auto copy to CLIPBOARD
+      await copyToClipboard(res.tsv);
+
+      // Show TOAST 2s
+      showCopiedToast(getVndListBtn, "Copied to clipboard", "button");
+    });
+  });
 
   // ==============================
   // 🔔 Listen for completion
@@ -290,9 +312,12 @@ getVPSListBtn.addEventListener("click", async () => {
         setButtonInNormal(getVPSListBtn, "Get VPS List");
         break;
 
+      case "GET_VND_LIST_DONE":
+        setButtonInNormal(getVndListBtn, "Get VND List");
+        break;
+
       default:
         break;
     }
-  }); 
+  });
 });
-

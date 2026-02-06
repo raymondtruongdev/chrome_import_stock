@@ -43,7 +43,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
 
     const addBtn = [...document.querySelectorAll("button")].find(
-      (btn) => btn.textContent.trim() === "Thêm mã CK"
+      (btn) => btn.textContent.trim() === "Thêm mã CK",
     );
 
     if (addBtn) {
@@ -78,7 +78,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   async function addSymbolVndirect(symbols) {
     console.log("[CONTENT] Symbols will be added:", symbols);
     const input = document.querySelector(
-      'input.react-autosuggest__input[placeholder="Nhập mã CK..."]'
+      'input.react-autosuggest__input[placeholder="Nhập mã CK..."]',
     );
 
     const addBtn = document
@@ -162,7 +162,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
           return a ? a.textContent.trim() : null;
         })
         .filter(Boolean);
-        
+
       (async () => {
         if (symbols?.length) {
           await addSymbolFireant(symbols);
@@ -256,7 +256,6 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       return true; // keep message channel alive
     }
 
-
     // ====================================
     // GET VPS LIST
     // ====================================
@@ -317,5 +316,54 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       return true;
     }
 
+    // ====================================
+    // GET VND LIST
+    // ====================================
+    if (message.type === "GET_VND_LIST") {
+      const table = document.querySelector("table.portfolio-data");
+
+      if (!table) {
+        console.warn("[CONTENT] VND portfolio table not found");
+        sendResponse({ tsv: "", headers: [], rows: [] });
+        return true;
+      }
+
+      // 1. Parse headers (remove icons)
+      const headers = [...table.querySelectorAll("thead th")].map((th) => {
+        const clone = th.cloneNode(true);
+        clone.querySelectorAll("i, span").forEach((el) => el.remove());
+        return clone.textContent.replace(/\s+/g, " ").trim();
+      });
+
+      // 2. Parse body rows ONLY (no thead / tfoot)
+      const rows = [...table.querySelectorAll("tbody tr")].map((tr) =>
+        [...tr.querySelectorAll("td")].map((td) =>
+          td.textContent.replace(/\s+/g, " ").trim(),
+        ),
+      );
+
+      // 3. Build TSV
+      const tsv = [
+        headers.join("\t"),
+        ...rows.map((row) => row.join("\t")),
+      ].join("\n");
+
+      console.log("[CONTENT] VND TSV generated");
+      console.log(tsv);
+
+      // 4. Response
+      sendResponse({
+        headers,
+        rows,
+        tsv,
+      });
+
+      // notify background
+      chrome.runtime.sendMessage({
+        type: "GET_VND_LIST_DONE",
+      });
+
+      return true;
+    }
   });
 }
