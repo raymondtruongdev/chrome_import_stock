@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Auto Import Text",
+  "name": "Import Stock VN",
   "version": "1.0",
   "description": "Fill text field and click Add button on current page",
   "permissions": ["activeTab", "scripting","storage"],
