@@ -149,6 +149,87 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     return { headers, rows };
   }
 
+  /**
+   * Map / reorder / rename columns from a parsed HTML table
+   *
+   * Purpose:
+   * - Pick only required columns from the original table
+   * - Reorder columns based on configuration
+   * - Rename headers for output (e.g. "Giá vốn" → "Giá TB")
+   *
+   * Typical usage:
+   *   const parsed = parseTable(...)
+   *   const mapped = mapTableColumns({ outputColumns, ...parsed })
+   *
+   * @param {Object} params
+   * @param {Array<{ key: string, label: string }>} params.outputColumns
+   *        - key   : original header name in the table
+   *        - label : output header name
+   * @param {string[]} params.headers
+   *        - original table headers (from parseTable)
+   * @param {string[][]} params.rows
+   *        - original table rows (from parseTable)
+   *
+   * @returns {{ headers: string[], rows: string[][] }}
+   *          - headers: mapped headers (renamed & reordered)
+   *          - rows   : mapped rows (picked & reordered columns)
+   */
+  function mapTableColumns({ outputColumns, headers, rows }) {
+    if (!headers?.length || !rows?.length) {
+      return { headers: [], rows: [] };
+    }
+
+    // Normalize header text for reliable matching
+    function normalizeHeader(text = "") {
+      return normalizeText(text).toLowerCase();
+    }
+
+    // Find column index by matching normalized header (flexible match)
+    function findHeaderIndex(headers, key) {
+      const normalizedKey = normalizeHeader(key);
+      return headers.findIndex((h) =>
+        normalizeHeader(h).includes(normalizedKey),
+      );
+    }
+
+    // Build output headers (renamed & reordered)
+    const mappedHeaders = outputColumns.map((c) => c.label);
+
+    // Build output rows (picked, reordered, transformed)
+    const mappedRows = rows.map((row) =>
+      outputColumns.map((c) => {
+        const idx = findHeaderIndex(headers, c.key);
+        if (idx === -1) return "";
+
+        const rawValue = row[idx] ?? "";
+
+        // Apply transform if provided
+        return typeof c.transform === "function"
+          ? c.transform(rawValue)
+          : rawValue;
+      }),
+    );
+
+    return {
+      headers: mappedHeaders,
+      rows: mappedRows,
+    };
+  }
+
+  function divideBy1000(value) {
+  if (!value) return "";
+
+  const num = Number(
+    value
+      .replace(/,/g, "")
+      .replace(/\s/g, ""),
+  );
+
+  if (Number.isNaN(num)) return value;
+
+  return num / 1000;
+}
+
   // ==================
   // Message Listener
   // ==================
@@ -315,12 +396,28 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         return true;
       }
 
-      const { headers, rows } = result;
-      const tsv = buildTSV(headers, rows);
+      const OUTPUT_COLUMNS = [
+        { key: "Mã CK", label: "Mã" },
+        { key: "Tổng", label: "KL" },
+        { key: "Có thể bán", label: "GD" },
+        { key: "Giá TB", label: "Giá TB " },
+        { key: "Giá TT", label: "Giá hiện tại" }, // đổi tênz
+      ];
 
+      const mapped = mapTableColumns({
+        outputColumns: OUTPUT_COLUMNS,
+        headers: result.headers,
+        rows: result.rows,
+      });
+
+      const tsv = buildTSV(mapped.headers, mapped.rows);
       console.log("[CONTENT] VPS TSV generated\n", tsv);
 
-      sendResponse({ headers, rows, tsv });
+      sendResponse({
+        headers: mapped.headers,
+        rows: mapped.rows,
+        tsv,
+      });
 
       chrome.runtime.sendMessage({ type: "GET_VPS_LIST_DONE" });
       return true;
@@ -343,12 +440,36 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         return true;
       }
 
-      const { headers, rows } = result;
-      const tsv = buildTSV(headers, rows);
+      const OUTPUT_COLUMNS = [
+        { key: "Mã", label: "Mã" },
+        { key: "KL", label: "KL" },
+        { key: "GD", label: "GD" },
+        {
+          key: "Giá vốn",
+          label: "Giá TB", // đổi tên
+          transform: divideBy1000,
+        },
+        {
+          key: "Giá hiện tại",
+          label: "Giá hiện tại",
+          transform: divideBy1000,
+        },
+      ];
 
+      const mapped = mapTableColumns({
+        outputColumns: OUTPUT_COLUMNS,
+        headers: result.headers,
+        rows: result.rows,
+      });
+
+      const tsv = buildTSV(mapped.headers, mapped.rows);
       console.log("[CONTENT] VND TSV generated\n", tsv);
 
-      sendResponse({ headers, rows, tsv });
+      sendResponse({
+        headers: mapped.headers,
+        rows: mapped.rows,
+        tsv,
+      });
 
       chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
       return true;
