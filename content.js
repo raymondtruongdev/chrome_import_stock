@@ -15,14 +15,11 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   const normalizeText = (text = "") =>
     text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
 
-  const normalizeHeader = (text = "") =>
-    normalizeText(text).toLowerCase();
+  const normalizeHeader = (text = "") => normalizeText(text).toLowerCase();
 
   function findHeaderIndex(headers, key) {
     const normalizedKey = normalizeHeader(key);
-    return headers.findIndex((h) =>
-      normalizeHeader(h).includes(normalizedKey),
-    );
+    return headers.findIndex((h) => normalizeHeader(h).includes(normalizedKey));
   }
 
   const buildTSV = (headers, rows) =>
@@ -35,9 +32,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   function divideBy1000(value) {
     if (!value) return "";
 
-    const num = Number(
-      value.replace(/,/g, "").replace(/\s/g, ""),
-    );
+    const num = Number(value.replace(/,/g, "").replace(/\s/g, ""));
 
     return Number.isNaN(num) ? value : num / 1000;
   }
@@ -70,8 +65,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
   async function addSymbolFireant(symbols) {
     const delay = 200;
-    const inputSelector =
-      'input[placeholder="Thêm mã CK vào watchlist..."]';
+    const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
 
     const addBtn = [...document.querySelectorAll("button")].find(
       (btn) => btn.textContent.trim() === "Thêm mã CK",
@@ -173,9 +167,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         if (idx === -1) return "";
 
         const raw = row[idx] ?? "";
-        return typeof c.transform === "function"
-          ? c.transform(raw)
-          : raw;
+        return typeof c.transform === "function" ? c.transform(raw) : raw;
       }),
     );
 
@@ -186,12 +178,12 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   // Message Listener
   // ==================
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
     // ========= FIREANT =========
     if (message.type === "GET_STOCK_LIST_FIREANT") {
       const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
         .map((div) =>
-          div.querySelector('a[href^="/charts/content/symbols/"]')
+          div
+            .querySelector('a[href^="/charts/content/symbols/"]')
             ?.textContent.trim(),
         )
         .filter(Boolean);
@@ -211,7 +203,8 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     if (message.type === "CLEAR_FIREANT") {
       const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
         .map((div) =>
-          div.querySelector('a[href^="/charts/content/symbols/"]')
+          div
+            .querySelector('a[href^="/charts/content/symbols/"]')
             ?.textContent.trim(),
         )
         .filter(Boolean);
@@ -301,6 +294,54 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       const tsv = buildTSV(mapped.headers, mapped.rows);
       sendResponse({ ...mapped, tsv });
       chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
+      return true;
+    }
+
+    // ========= FETCH VND LIST (API) =========
+    if (message.type === "FETCH_VND_LIST") {
+      (async () => {
+        try {
+          const res = await fetch(
+            "https://trade-api.vndirect.com.vn/am/statement" +
+              "?type=REALTIME" +
+              "&accountNo=0001145256" +
+              "&pageSize=1500" +
+              "&pageIndex=0" +
+              "&secTypeName=Normal+share,Special+share,Fund+unit,ETF:+Exchange+Traded+Fund,Covered+Warrant",
+            {
+              headers: {
+                Accept: "application/json, text/plain, */*",
+                "X-AUTH-TOKEN": message.token,
+              },
+            },
+          );
+
+          if (!res.ok) {
+            sendResponse({ error: `HTTP_${res.status}` });
+            return;
+          }
+
+          const json = await res.json();
+
+          const headers = [
+            "symbol",
+            "quantity",
+            "averagePrice",
+            "currentPrice",
+          ];
+
+          const rows = json.hits.map((item) =>
+            headers.map((h) => item[h]).join("\t"),
+          );
+
+          const tsv = [headers.join("\t"), ...rows].join("\n");
+
+          sendResponse({ tsv });
+        } catch {
+          sendResponse({ error: "FETCH_FAILED" });
+        }
+      })();
+
       return true;
     }
   });

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Update VND Token</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+
+      /* Center content */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: #f5f6f8;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 360px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    h3 {
+      margin: 0 0 12px;
+      text-align: center;
+    }
+
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #1677ff;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #0958d9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h3>Update VND Token</h3>
+    <h5 style="text-align: left;">
+      Find at in chrome devtools &gt; Application &gt;
+      cookie: "https://trade.vndirect.com.vn/" 
+      name  : "token-id"
+    </h5>
+    <input id="tokenInput" type="text" placeholder="Enter VND token..." autofocus />
+    <button id="updateTokenBtn">Update token</button>
+  </div>
+
+  <script src="token_popup_vnd.js"></script>
+</body>
+
+</html>

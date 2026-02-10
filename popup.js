@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const copyTextboxBtn = document.getElementById("copyTextboxBtn");
   const clearTextboxBtn = document.getElementById("clearTextboxBtn");
   const getVndListBtn = document.getElementById("getVndList");
+  const fetchVndListBtn = document.getElementById("fetchVndList");
+  const updateVndTokenBtn = document.getElementById("updateVndToken");
 
   let activeTabId = null;
 
@@ -95,6 +97,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       toast.classList.remove("show");
       setTimeout(() => toast.remove(), 200);
     }, 2000);
+  }
+
+  function showAlert(message) {
+    alert("⚠️ " + message);
   }
 
   // ==============================
@@ -265,15 +271,90 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Show in Textbox
       stockListText.value = res.tsv;
-
-      // Auto copy to CLIPBOARD
       await copyToClipboard(res.tsv);
-
-      // Show TOAST 2s
       showCopiedToast(getVndListBtn, "Copied to clipboard", "button");
     });
+  });
+
+  // ==============================
+  // ▶ UPDATE VND TOKEN
+  // ==============================
+  updateVndTokenBtn.addEventListener("click", async () => {
+    setButtonInProcessing(updateVndTokenBtn);
+
+    const POPUP_WIDTH = 380;
+    const POPUP_HEIGHT = 200;
+    const screenWidth = screen.availWidth;
+    const screenHeight = screen.availHeight;
+
+    const left = Math.round((screenWidth - POPUP_WIDTH) / 2);
+    const top = Math.round((screenHeight - POPUP_HEIGHT) / 2);
+
+    chrome.windows.create(
+      {
+        url: chrome.runtime.getURL("/ui/token_popup_vnd.html"),
+        type: "popup",
+        width: POPUP_WIDTH,
+        height: POPUP_HEIGHT,
+        left,
+        top,
+      },
+      () => {
+        setButtonInNormal(updateVndTokenBtn, "Update VND Token");
+      },
+    );
+  });
+
+  // ==============================
+  // ▶ FETCH VND LIST
+  // ==============================
+  fetchVndListBtn.addEventListener("click", async () => {
+    setButtonInProcessing(fetchVndListBtn);
+
+    try {
+      const { authTokenVnd } = await chrome.storage.local.get("authTokenVnd");
+
+      if (!authTokenVnd) {
+        showAlert("Vui lòng cập nhật VND Token trước");
+        return;
+      }
+
+      const tabId = await initActiveTab();
+
+      const response = await chrome.tabs.sendMessage(tabId, {
+        type: "FETCH_VND_LIST",
+        token: authTokenVnd,
+      });
+
+      if (response?.error) {
+        switch (response.error) {
+          case "HTTP_401":
+          case "HTTP_403":
+            showAlert("Token sai hoặc đã hết hạn");
+            return;
+
+          case "FETCH_FAILED":
+            showAlert("Không thể kết nối VNDIRECT");
+            return;
+
+          default:
+            showAlert("Không lấy được dữ liệu VND");
+            return;
+        }
+      }
+
+      if (!response?.tsv) {
+        showAlert("Dữ liệu trả về rỗng");
+        return;
+      }
+
+      stockListText.value = response.tsv;
+      await copyToClipboard(response.tsv);
+      showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
+    } finally {
+      setButtonInNormal(fetchVndListBtn, "Get VND List");
+    }
   });
 
   // ==============================
