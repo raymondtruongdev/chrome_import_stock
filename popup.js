@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const getVndListBtn = document.getElementById("getVndList");
   const fetchVndListBtn = document.getElementById("fetchVndList");
   const updateVndTokenBtn = document.getElementById("updateVndToken");
+  const fetchVpsListBtn = document.getElementById("fetchVpsList");
+  const updateVpsTokenBtn = document.getElementById("updateVpsToken");
 
   let activeTabId = null;
 
@@ -307,7 +309,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
-  // ▶ FETCH VND LIST
+  // ▶ FETCH VND PORTFOLIO LIST
   // ==============================
   fetchVndListBtn.addEventListener("click", async () => {
     setButtonInProcessing(fetchVndListBtn);
@@ -353,7 +355,103 @@ document.addEventListener("DOMContentLoaded", async () => {
       await copyToClipboard(response.tsv);
       showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
     } finally {
-      setButtonInNormal(fetchVndListBtn, "Get VND List");
+      setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+    }
+  });
+
+  // ==============================
+  // ▶ UPDATE VPS TOKEN
+  // ==============================
+  updateVpsTokenBtn.addEventListener("click", async () => {
+    setButtonInProcessing(updateVpsTokenBtn);
+
+    const POPUP_WIDTH = 450;
+    const POPUP_HEIGHT = 350;
+    const screenWidth = screen.availWidth;
+    const screenHeight = screen.availHeight;
+
+    const left = Math.round((screenWidth - POPUP_WIDTH) / 2);
+    const top = Math.round((screenHeight - POPUP_HEIGHT) / 2);
+
+    chrome.windows.create(
+      {
+        url: chrome.runtime.getURL("/ui/token_popup_vps.html"),
+        type: "popup",
+        width: POPUP_WIDTH,
+        height: POPUP_HEIGHT,
+        left,
+        top,
+      },
+      () => {
+        setButtonInNormal(updateVpsTokenBtn, "Update VPS Token");
+      },
+    );
+  });
+
+  
+
+  // ==============================
+  // ▶ FETCH VPS PORTFOLIO LIST
+  // ==============================
+  fetchVpsListBtn.addEventListener("click", async () => {
+    setButtonInProcessing(fetchVpsListBtn);
+
+    try {
+      // 🔥 Lấy từ chrome storage
+      const { vps_deviceNew, vps_session, vps_user, vps_account } =
+        await chrome.storage.local.get([
+          "vps_deviceNew",
+          "vps_session",
+          "vps_user",
+          "vps_account",
+        ]);
+
+      // ⚠️ Kiểm tra tồn tại
+      if (!vps_deviceNew || !vps_session || !vps_user || !vps_account) {
+        showAlert("Vui lòng import curl VPS trước");
+        return;
+      }
+
+      const tabId = await initActiveTab();
+
+      const response = await chrome.tabs.sendMessage(tabId, {
+        type: "FETCH_VPS_LIST",
+        deviceNew: vps_deviceNew,
+        session: vps_session,
+        user: vps_user,
+        account: vps_account,
+      });
+
+      if (response?.error) {
+        switch (response.error) {
+          case "HTTP_401":
+          case "HTTP_403":
+            showAlert("Session hết hạn. Import curl mới.");
+            return;
+
+          case "FETCH_FAILED":
+            showAlert("Không thể kết nối VPS");
+            return;
+
+          default:
+            showAlert("Không lấy được dữ liệu VPS");
+            return;
+        }
+      }
+
+      if (!response?.tsv) {
+        showAlert("Dữ liệu trả về rỗng");
+        return;
+      }
+
+      stockListText.value = response.tsv;
+      await copyToClipboard(response.tsv);
+      showCopiedToast(fetchVpsListBtn, "Copied to clipboard", "button");
+    } catch (err) {
+      console.error("[FETCH_VPS_LIST]", err);
+      showAlert("Có lỗi xảy ra");
+    } finally {
+      setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
     }
   });
 

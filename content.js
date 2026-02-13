@@ -344,5 +344,91 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
       return true;
     }
+    // ====================================
+    // FETCH VPS PORTFOLIO LIST
+    // ====================================
+    if (message.type === "FETCH_VPS_LIST") {
+      (async () => {
+        try {
+          const res = await fetch(
+            "https://webtrading-proxy.vps.com.vn/rest-api/Q/web.portfolio.portfoliostatus",
+            {
+              method: "POST",
+              headers: {
+                Accept: "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+                "X-Device-New": message.deviceNew, // truyền từ popup
+                "X-Session": message.session, // truyền từ popup
+                "X-User": message.user, // truyền từ popup
+                "X-Ext-Info": "goline",
+              },
+              body: JSON.stringify({
+                type: "string",
+                cmd: "Web.Portfolio.PortfolioStatus",
+                p1: message.account, // truyền từ popup
+                p2: "1",
+                p3: "20",
+                p4: "",
+                p5: "",
+              }),
+            },
+          );
+
+          if (!res.ok) {
+            sendResponse({ error: `HTTP_${res.status}` });
+            return;
+          }
+
+          const json = await res.json();
+
+          // VPS thường trả data trong json.data hoặc json.result
+          const list = json?.data || json?.result || [];
+
+          if (!Array.isArray(list)) {
+            sendResponse({ error: "INVALID_RESPONSE" });
+            return;
+          }
+
+          // Bỏ dòng TOTAL
+          const filteredList = list.filter((item) => item.symbol !== "TOTAL");
+
+          // Header mới
+          const headers = [
+            "symbol",
+            "quantity",
+            "averagePrice",
+            "currentPrice",
+          ];
+
+          const rows = filteredList.map((item) => {
+            const symbol = item.symbol ?? "";
+
+            const quantity = (item.actual_vol ?? "").toString().trim();
+
+            const averagePrice =
+              parseFloat((item.avg_price ?? "0").toString().trim()) * 1000;
+
+            const currentPrice =
+              parseFloat((item.market_price ?? "0").toString().trim()) * 1000;
+
+            return [
+              symbol,
+              quantity,
+              averagePrice || "",
+              currentPrice || "",
+            ].join("\t");
+          });
+
+          const tsv = [headers.join("\t"), ...rows].join("\n");
+
+          sendResponse({ tsv });
+        } catch (err) {
+          console.error("[FETCH_VPS_LIST]", err);
+          sendResponse({ error: "FETCH_FAILED" });
+        }
+      })();
+
+      return true;
+    }
   });
 }
