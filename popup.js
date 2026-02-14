@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function showCopiedToast(
+  function showCustomToast(
     anchorEl,
     text = "Copied to clipboard",
     mode = "corner",
@@ -105,6 +105,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     alert("⚠️ " + message);
   }
 
+  function showInfo(message) {
+    alert("ℹ️ " + message);
+  }
+
   // ==============================
   //  CLEAR TEXTBOX CONTENT
   // ==============================
@@ -121,7 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const text = stockListText.value;
     if (!text) return;
     await navigator.clipboard.writeText(text);
-    showCopiedToast(null, "Copied to clipboard", "corner");
+    showCustomToast(null, "Copied to clipboard", "corner");
   });
 
   // ==============================
@@ -137,9 +141,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       (res) => {
         if (res?.symbols?.length) {
           text = res.symbols.join(",");
+          stockListText.value = text;
+          chrome.storage.local.set({ stockList: text });
+        } else {
+          showAlert("Vui lòng mở trang https://fireant.vn/charts và thử lại.");
         }
-        stockListText.value = text;
-        chrome.storage.local.set({ stockList: text });
       },
     );
   });
@@ -191,9 +197,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
       if (res?.symbols?.length) {
         text = res.symbols.join(",");
+        stockListText.value = text;
+        chrome.storage.local.set({ stockList: text });
+      } else {
+        showAlert(
+          "Vui lòng mở trang https://trade.vndirect.com.vn/ và thử lại.",
+        );
       }
-      stockListText.value = text;
-      chrome.storage.local.set({ stockList: text });
     });
   });
   // ==============================
@@ -252,7 +262,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await copyToClipboard(res.tsv);
 
       // Show TOAST 2s
-      showCopiedToast(getVPSListBtn, "Copied to clipboard", "button");
+      showCustomToast(getVPSListBtn, "Copied to clipboard", "button");
 
       // Save to local storage
       // chrome.storage.local.set({stockList: res.tsv,});
@@ -275,7 +285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       stockListText.value = res.tsv;
       await copyToClipboard(res.tsv);
-      showCopiedToast(getVndListBtn, "Copied to clipboard", "button");
+      showCustomToast(getVndListBtn, "Copied to clipboard", "button");
     });
   });
 
@@ -284,7 +294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   updateVndTokenBtn.addEventListener("click", async () => {
     setButtonInProcessing(updateVndTokenBtn);
-     const POPUP_WIDTH = 450;
+    const POPUP_WIDTH = 450;
     const POPUP_HEIGHT = 350;
 
     const screenWidth = screen.availWidth;
@@ -313,63 +323,61 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
 
   fetchVndListBtn.addEventListener("click", async () => {
-  setButtonInProcessing(fetchVndListBtn);
+    setButtonInProcessing(fetchVndListBtn);
 
-  try {
-    // 🔥 Lấy VND token từ chrome storage
-    const { vnd_account, vnd_token } =
-      await chrome.storage.local.get([
+    try {
+      // Lấy VND token từ chrome storage
+      const { vnd_account, vnd_token } = await chrome.storage.local.get([
         "vnd_account",
         "vnd_token",
       ]);
 
-    // ⚠️ Kiểm tra tồn tại
-    if (!vnd_account || !vnd_token) {
-      showAlert("Vui lòng import curl VND trước");
-      return;
-    }
-
-    const tabId = await initActiveTab();
-
-    const response = await chrome.tabs.sendMessage(tabId, {
-      type: "FETCH_VND_LIST",
-      vnd_account,
-      vnd_token,
-    });
-
-    if (response?.error) {
-      switch (response.error) {
-        case "HTTP_401":
-        case "HTTP_403":
-          showAlert("Token hết hạn. Import curl mới.");
-          return;
-
-        case "FETCH_FAILED":
-          showAlert("Không thể kết nối VND");
-          return;
-
-        default:
-          showAlert("Không lấy được dữ liệu VND");
-          return;
+      // Kiểm tra tồn tại
+      if (!vnd_account || !vnd_token) {
+        showAlert("Vui lòng import curl VND trước");
+        return;
       }
+
+      const tabId = await initActiveTab();
+
+      const response = await chrome.tabs.sendMessage(tabId, {
+        type: "FETCH_VND_LIST",
+        vnd_account,
+        vnd_token,
+      });
+
+      if (response?.error) {
+        switch (response.error) {
+          case "HTTP_401":
+          case "HTTP_403":
+            showAlert("Token hết hạn. Import curl mới.");
+            return;
+
+          case "FETCH_FAILED":
+            showAlert("Không thể kết nối VND");
+            return;
+
+          default:
+            showAlert("Không lấy được dữ liệu VND");
+            return;
+        }
+      }
+
+      if (!response?.tsv) {
+        showAlert("Dữ liệu trả về rỗng");
+        return;
+      }
+
+      stockListText.value = response.tsv;
+      await copyToClipboard(response.tsv);
+      showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
+    } catch (err) {
+      console.error("[FETCH_VND_LIST]", err);
+      showAlert("Có lỗi xảy ra");
+    } finally {
+      setButtonInNormal(fetchVndListBtn, "Fetch VND List");
     }
-
-    if (!response?.tsv) {
-      showAlert("Dữ liệu trả về rỗng");
-      return;
-    }
-
-    stockListText.value = response.tsv;
-    await copyToClipboard(response.tsv);
-    showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
-
-  } catch (err) {
-    console.error("[FETCH_VND_LIST]", err);
-    showAlert("Có lỗi xảy ra");
-  } finally {
-    setButtonInNormal(fetchVndListBtn, "Fetch VND List");
-  }
-});
+  });
 
   // ==============================
   // ▶ UPDATE VPS TOKEN
@@ -400,8 +408,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   });
 
-  
-
   // ==============================
   // ▶ FETCH VPS PORTFOLIO LIST
   // ==============================
@@ -409,7 +415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchVpsListBtn);
 
     try {
-      // 🔥 Lấy từ chrome storage
+      // Lấy từ chrome storage
       const { vps_deviceNew, vps_session, vps_user, vps_account } =
         await chrome.storage.local.get([
           "vps_deviceNew",
@@ -418,7 +424,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           "vps_account",
         ]);
 
-      // ⚠️ Kiểm tra tồn tại
+      // Kiểm tra tồn tại
       if (!vps_deviceNew || !vps_session || !vps_user || !vps_account) {
         showAlert("Vui lòng import curl VPS trước");
         return;
@@ -458,7 +464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       stockListText.value = response.tsv;
       await copyToClipboard(response.tsv);
-      showCopiedToast(fetchVpsListBtn, "Copied to clipboard", "button");
+      showCustomToast(fetchVpsListBtn, "Copied to clipboard", "button");
     } catch (err) {
       console.error("[FETCH_VPS_LIST]", err);
       showAlert("Có lỗi xảy ra");
