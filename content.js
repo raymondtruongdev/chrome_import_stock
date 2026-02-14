@@ -304,14 +304,15 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
           const res = await fetch(
             "https://trade-api.vndirect.com.vn/am/statement" +
               "?type=REALTIME" +
-              "&accountNo=0001145256" +
+              "&accountNo=" +
+              message.vnd_account +
               "&pageSize=1500" +
               "&pageIndex=0" +
               "&secTypeName=Normal+share,Special+share,Fund+unit,ETF:+Exchange+Traded+Fund,Covered+Warrant",
             {
               headers: {
                 Accept: "application/json, text/plain, */*",
-                "X-AUTH-TOKEN": message.token,
+                "X-AUTH-TOKEN": message.vnd_token,
               },
             },
           );

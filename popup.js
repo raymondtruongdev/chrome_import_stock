@@ -284,9 +284,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   updateVndTokenBtn.addEventListener("click", async () => {
     setButtonInProcessing(updateVndTokenBtn);
+     const POPUP_WIDTH = 450;
+    const POPUP_HEIGHT = 350;
 
-    const POPUP_WIDTH = 380;
-    const POPUP_HEIGHT = 200;
     const screenWidth = screen.availWidth;
     const screenHeight = screen.availHeight;
 
@@ -311,53 +311,65 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // ▶ FETCH VND PORTFOLIO LIST
   // ==============================
+
   fetchVndListBtn.addEventListener("click", async () => {
-    setButtonInProcessing(fetchVndListBtn);
+  setButtonInProcessing(fetchVndListBtn);
 
-    try {
-      const { authTokenVnd } = await chrome.storage.local.get("authTokenVnd");
+  try {
+    // 🔥 Lấy VND token từ chrome storage
+    const { vnd_account, vnd_token } =
+      await chrome.storage.local.get([
+        "vnd_account",
+        "vnd_token",
+      ]);
 
-      if (!authTokenVnd) {
-        showAlert("Vui lòng cập nhật VND Token trước");
-        return;
-      }
-
-      const tabId = await initActiveTab();
-
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: "FETCH_VND_LIST",
-        token: authTokenVnd,
-      });
-
-      if (response?.error) {
-        switch (response.error) {
-          case "HTTP_401":
-          case "HTTP_403":
-            showAlert("Token sai hoặc đã hết hạn");
-            return;
-
-          case "FETCH_FAILED":
-            showAlert("Không thể kết nối VNDIRECT");
-            return;
-
-          default:
-            showAlert("Không lấy được dữ liệu VND");
-            return;
-        }
-      }
-
-      if (!response?.tsv) {
-        showAlert("Dữ liệu trả về rỗng");
-        return;
-      }
-
-      stockListText.value = response.tsv;
-      await copyToClipboard(response.tsv);
-      showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
-    } finally {
-      setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+    // ⚠️ Kiểm tra tồn tại
+    if (!vnd_account || !vnd_token) {
+      showAlert("Vui lòng import curl VND trước");
+      return;
     }
-  });
+
+    const tabId = await initActiveTab();
+
+    const response = await chrome.tabs.sendMessage(tabId, {
+      type: "FETCH_VND_LIST",
+      vnd_account,
+      vnd_token,
+    });
+
+    if (response?.error) {
+      switch (response.error) {
+        case "HTTP_401":
+        case "HTTP_403":
+          showAlert("Token hết hạn. Import curl mới.");
+          return;
+
+        case "FETCH_FAILED":
+          showAlert("Không thể kết nối VND");
+          return;
+
+        default:
+          showAlert("Không lấy được dữ liệu VND");
+          return;
+      }
+    }
+
+    if (!response?.tsv) {
+      showAlert("Dữ liệu trả về rỗng");
+      return;
+    }
+
+    stockListText.value = response.tsv;
+    await copyToClipboard(response.tsv);
+    showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
+
+  } catch (err) {
+    console.error("[FETCH_VND_LIST]", err);
+    showAlert("Có lỗi xảy ra");
+  } finally {
+    setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+  }
+});
 
   // ==============================
   // ▶ UPDATE VPS TOKEN
