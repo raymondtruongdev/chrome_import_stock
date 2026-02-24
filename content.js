@@ -431,5 +431,77 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
       return true;
     }
+
+    // ====================================
+    // FETCH SSI PORTFOLIO LIST
+    // ====================================
+    if (message.type === "FETCH_SSI_LIST") {
+      (async () => {
+        try {
+          const url = `https://iboard-tapi.ssi.com.vn/trading/stock-position?account=${message.account}&status=holding`;
+
+          const res = await fetch(url, {
+            method: "GET",
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Accept-Language": "vi",
+              Authorization: `Bearer ${message.token}`,
+              "device-id": message.deviceId,
+              Origin: "https://iboard.ssi.com.vn",
+              Referer: "https://iboard.ssi.com.vn/",
+            },
+          });
+
+          if (!res.ok) {
+            sendResponse({ error: `HTTP_${res.status}` });
+            return;
+          }
+
+          const json = await res.json();
+
+          // ✅ Check success code
+          if (json?.code !== "SUCCESS") {
+            sendResponse({ error: "INVALID_RESPONSE" });
+            return;
+          }
+
+          const list = json?.data?.stockPositions || [];
+
+          if (!Array.isArray(list)) {
+            sendResponse({ error: "INVALID_RESPONSE" });
+            return;
+          }
+
+          // Header TSV
+          const headers = [
+            "symbol",
+            "quantity",
+            "averagePrice",
+            "currentPrice",
+          ];
+
+          const rows = list.map((item) => {
+            const symbol = item.stockSymbol ?? "";
+
+            const quantity = item.vol ?? "";
+
+            const averagePrice = item.avgPrice ?? "";
+
+            const currentPrice = item.matchedPrice ?? "";
+
+            return [symbol, quantity, averagePrice, currentPrice].join("\t");
+          });
+
+          const tsv = [headers.join("\t"), ...rows].join("\n");
+
+          sendResponse({ tsv });
+        } catch (err) {
+          console.error("[FETCH_SSI_LIST]", err);
+          sendResponse({ error: "FETCH_FAILED" });
+        }
+      })();
+
+      return true;
+    }
   });
 }

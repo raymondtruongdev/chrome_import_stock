@@ -14,6 +14,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const updateVndTokenBtn = document.getElementById("updateVndToken");
   const fetchVpsListBtn = document.getElementById("fetchVpsList");
   const updateVpsTokenBtn = document.getElementById("updateVpsToken");
+  const fetchSsiListBtn = document.getElementById("fetchSsiList");
+  const updateSsiTokenBtn = document.getElementById("updateSsiToken");
 
   let activeTabId = null;
 
@@ -473,6 +475,97 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // ==============================
+  // ▶ UPDATE SSI TOKEN
+  // ==============================
+  updateSsiTokenBtn.addEventListener("click", async () => {
+    setButtonInProcessing(updateSsiTokenBtn);
+
+    const POPUP_WIDTH = 450;
+    const POPUP_HEIGHT = 350;
+    const screenWidth = screen.availWidth;
+    const screenHeight = screen.availHeight;
+
+    const left = Math.round((screenWidth - POPUP_WIDTH) / 2);
+    const top = Math.round((screenHeight - POPUP_HEIGHT) / 2);
+
+    chrome.windows.create(
+      {
+        url: chrome.runtime.getURL("/ui/token_popup_ssi.html"),
+        type: "popup",
+        width: POPUP_WIDTH,
+        height: POPUP_HEIGHT,
+        left,
+        top,
+      },
+      () => {
+        setButtonInNormal(updateSsiTokenBtn, "Update SSI Token");
+      },
+    );
+  });
+
+  // ==============================
+  // ▶ FETCH SSI PORTFOLIO LIST
+  // ==============================
+  fetchSsiListBtn.addEventListener("click", async () => {
+    setButtonInProcessing(fetchSsiListBtn);
+
+    try {
+      // Lấy từ chrome storage
+      const { ssi_device_id, ssi_token, ssi_account } =
+        await chrome.storage.local.get([
+          "ssi_device_id",
+          "ssi_token",
+          "ssi_account",
+        ]);
+
+      // Kiểm tra tồn tại
+      if (!ssi_device_id || !ssi_token || !ssi_account) {
+        showAlert("Vui lòng import curl SSI trước");
+        return;
+      }
+
+      const tabId = await initActiveTab();
+
+      const response = await chrome.tabs.sendMessage(tabId, {
+        type: "FETCH_SSI_LIST",
+        deviceId: ssi_device_id,
+        token: ssi_token,
+        account: ssi_account,
+      });
+
+      if (response?.error) {
+        switch (response.error) {
+          case "HTTP_401":
+          case "HTTP_403":
+            showAlert("Token hết hạn. Import curl mới.");
+            return;
+
+          case "FETCH_FAILED":
+            showAlert("Không thể kết nối SSI");
+            return;
+
+          default:
+            showAlert("Không lấy được dữ liệu SSI");
+            return;
+        }
+      }
+
+      if (!response?.tsv) {
+        showAlert("Dữ liệu trả về rỗng");
+        return;
+      }
+
+      stockListText.value = response.tsv;
+      await copyToClipboard(response.tsv);
+      showCustomToast(fetchSsiListBtn, "Copied to clipboard", "button");
+    } catch (err) {
+      console.error("[FETCH_SSI_LIST]", err);
+      showAlert("Có lỗi xảy ra");
+    } finally {
+      setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
+    }
+  });
   // ==============================
   // 🔔 Listen for completion
   // ==============================

@@ -126,6 +126,20 @@
       opacity: 1;
       transform: translateY(0);
     }
+
+    .btn-with-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 24px;
+      height: 24px;
+      display: block;
+      /* tránh lệch baseline */
+    }
   </style>
 </head>
 
@@ -161,20 +175,34 @@
 
   <div class="btn-row">
     <button class="btn btn-fourth" id="getVPSList">Get VPS List</button>
-     <button class="btn btn-fourth" style="background: #e3b02c;" id="getVndList">Get VND List</button>
+    <button class="btn btn-fourth" style="background: #e3b02c;" id="getVndList">Get VND List</button>
   </div>
 
   <div class="divider"></div>
   <h3>Fetch Data Directly</h3>
 
   <div class="btn-row">
-    <button class="btn btn-fourth" style="background: #e3b02c;;" id="fetchVndList">Fetch VND List</button>
+    <button class="btn btn-secondary btn-with-icon" style="color: #fff;" id="fetchVndList">
+      <img src="../icons/vnd.jpeg" class="btn-icon" style="background: #ffffff;" />
+      Fetch VND
+    </button>
     <button class="btn btn-fourth" style="background: #2cb2e3;" id="updateVndToken">Update VND token</button>
   </div>
 
-    <div class="btn-row">
-    <button class="btn btn-fourth" style="background: #e32c2c;;" id="fetchVpsList">Fetch VPS List</button>
+  <div class="btn-row">
+    <button class="btn btn-secondary btn-with-icon" style="color: #fff;" id="fetchVpsList">
+      <img src="../icons/vps.svg" class="btn-icon" style="background: #ffffff;" />
+      Fetch VPS
+    </button>
     <button class="btn btn-fourth" style="background: #2cb2e3;" id="updateVpsToken">Update VPS token</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary btn-with-icon" style="color: #fff;" id="fetchSsiList">
+      <img src="../icons/ssi.svg" class="btn-icon" />
+      Fetch SSI
+    </button>
+    <button class="btn btn-fourth" style="background: #2cb2e3;" id="updateSsiToken">Update SSI token</button>
   </div>
 
   <script src="popup.js"></script>
