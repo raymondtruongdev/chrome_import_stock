@@ -370,7 +370,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       stockListText.value = response.tsv;
       await copyToClipboard(response.tsv);
-      showCopiedToast(fetchVndListBtn, "Copied to clipboard", "button");
+      showCustomToast(fetchVndListBtn, "Copied to clipboard", "button");
     } catch (err) {
       console.error("[FETCH_VND_LIST]", err);
       showAlert("Có lỗi xảy ra");
