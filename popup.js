@@ -11,11 +11,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const clearTextboxBtn = document.getElementById("clearTextboxBtn");
   const getVndListBtn = document.getElementById("getVndList");
   const fetchVndListBtn = document.getElementById("fetchVndList");
-  const updateVndTokenBtn = document.getElementById("updateVndToken");
+  const inputVndTokenUpdateBtn = document.getElementById("inputVndTokenUpdate");
   const fetchVpsListBtn = document.getElementById("fetchVpsList");
-  const updateVpsTokenBtn = document.getElementById("updateVpsToken");
+  const inputVpsTokenUpdateBtn = document.getElementById("inputVpsTokenUpdate");
   const fetchSsiListBtn = document.getElementById("fetchSsiList");
-  const updateSsiTokenBtn = document.getElementById("updateSsiToken");
+  const inputSsiTokenUpdateBtn = document.getElementById("inputSsiTokenUpdate");
+  const autoVndTokenUpdateBtn = document.getElementById("autoVndTokenUpdate");
+  const autoVpsTokenUpdateBtn = document.getElementById("autoVpsTokenUpdate");
+  const autoSsiTokenUpdateBtn = document.getElementById("autoSsiTokenUpdate");
 
   let activeTabId = null;
 
@@ -294,8 +297,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // ▶ UPDATE VND TOKEN
   // ==============================
-  updateVndTokenBtn.addEventListener("click", async () => {
-    setButtonInProcessing(updateVndTokenBtn);
+  inputVndTokenUpdateBtn.addEventListener("click", async () => {
+    setButtonInProcessing(inputVndTokenUpdateBtn);
     const POPUP_WIDTH = 450;
     const POPUP_HEIGHT = 350;
 
@@ -315,7 +318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(updateVndTokenBtn, "Update VND Token");
+        setButtonInNormal(inputVndTokenUpdateBtn, "Update VND Token");
       },
     );
   });
@@ -384,8 +387,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // ▶ UPDATE VPS TOKEN
   // ==============================
-  updateVpsTokenBtn.addEventListener("click", async () => {
-    setButtonInProcessing(updateVpsTokenBtn);
+  inputVpsTokenUpdateBtn.addEventListener("click", async () => {
+    setButtonInProcessing(inputVpsTokenUpdateBtn);
 
     const POPUP_WIDTH = 450;
     const POPUP_HEIGHT = 350;
@@ -405,7 +408,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(updateVpsTokenBtn, "Update VPS Token");
+        setButtonInNormal(inputVpsTokenUpdateBtn, "Update VPS Token");
       },
     );
   });
@@ -478,8 +481,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // ▶ UPDATE SSI TOKEN
   // ==============================
-  updateSsiTokenBtn.addEventListener("click", async () => {
-    setButtonInProcessing(updateSsiTokenBtn);
+  inputSsiTokenUpdateBtn.addEventListener("click", async () => {
+    setButtonInProcessing(inputSsiTokenUpdateBtn);
 
     const POPUP_WIDTH = 450;
     const POPUP_HEIGHT = 350;
@@ -499,7 +502,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(updateSsiTokenBtn, "Update SSI Token");
+        setButtonInNormal(inputSsiTokenUpdateBtn, "Update SSI Token");
       },
     );
   });
@@ -609,5 +612,36 @@ document.addEventListener("DOMContentLoaded", async () => {
       default:
         break;
     }
+  });
+
+  // ==============================
+  // Copy Curl VND
+  // ==============================
+  autoVndTokenUpdateBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.url.includes("trade.vndirect.com.vn")) {
+      result.textContent = "Vui lòng mở trang trade.vndirect.com.vn";
+      return;
+    }
+
+    result.textContent = "Đang bắt request...";
+
+    chrome.runtime.sendMessage(
+      { type: "GET_VND_AFTYPE_CURL", tabId: tab.id },
+      (res) => {
+        if (res?.error) {
+          result.textContent = res.error;
+        } else if (res?.success) {
+          result.textContent = "✅ VND Token đã được cập nhật tự động!";
+          showCustomToast(autoVndTokenUpdateBtn, "VND Token Updated", "button");
+        } else {
+          result.textContent = "Không tìm thấy request /aftype";
+        }
+      },
+    );
   });
 });
