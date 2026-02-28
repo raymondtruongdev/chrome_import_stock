@@ -615,7 +615,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
-  // Copy Curl VND
+  // Auto Token VND
   // ==============================
   autoVndTokenUpdateBtn.addEventListener("click", async () => {
     const [tab] = await chrome.tabs.query({
@@ -643,5 +643,43 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       },
     );
+  });
+
+  // ==============================
+  // Auto Token VPS
+  // ==============================
+  autoVpsTokenUpdateBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.url.includes("smartoneweb.vps.com.vn")) {
+      result.textContent = "Vui lòng mở trang smartoneweb.vps.com.vn";
+      return;
+    }
+
+    result.textContent = "Đang bắt request VPS...";
+
+    chrome.runtime.sendMessage(
+      { type: "GET_VPS_GETACCOUNTINFO_CURL", tabId: tab.id },
+      (res) => {
+        if (res?.error) {
+          result.textContent = res.error;
+        } else if (res?.success) {
+          result.textContent = "✅ VPS Token đã được cập nhật tự động!";
+          showCustomToast(autoVpsTokenUpdateBtn, "VPS Token Updated", "button");
+        } else {
+          result.textContent = "Không tìm thấy request /getAccountInfo";
+        }
+      },
+    );
+  });
+
+  // ==============================
+  // Auto Token SSI
+  // ==============================
+  autoSsiTokenUpdateBtn.addEventListener("click", () => {
+    result.textContent = "Tính năng tự động cho SSI đang được phát triển.";
   });
 });
