@@ -114,12 +114,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     alert("ℹ️ " + message);
   }
 
+  /**
+   * Render TSV string to HTML Table in #result element
+   * @param {string} tsv
+   */
+  function renderTable(tsv) {
+    const resultEl = document.getElementById("result");
+    if (!tsv || !tsv.includes("\t")) {
+      // resultEl.textContent = tsv || ""; // If not TSV, show as text
+      return;
+    }
+
+    const rows = tsv.trim().split("\n");
+    if (rows.length === 0) return;
+
+    let html = "<table><thead><tr>";
+
+    // Header
+    const headers = rows[0].split("\t");
+    headers.forEach((h) => {
+      html += `<th>${h}</th>`;
+    });
+    html += "</tr></thead><tbody>";
+
+    // Body
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i].split("\t");
+      html += "<tr>";
+      cols.forEach((c) => {
+        html += `<td>${c}</td>`;
+      });
+      html += "</tr>";
+    }
+
+    html += "</tbody></table>";
+    resultEl.innerHTML = html;
+  }
+
   // ==============================
   //  CLEAR TEXTBOX CONTENT
   // ==============================
   clearTextboxBtn.addEventListener("click", async () => {
     // Clear UI
     stockListText.value = "";
+    document.getElementById("result").innerHTML = ""; // Clear table
     chrome.storage.local.set({ stockList: "" });
   });
 
@@ -262,6 +300,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Show in Textbox
       stockListText.value = res.tsv;
+      renderTable(res.tsv);
 
       // Auto copy to CLIPBOARD
       await copyToClipboard(res.tsv);
@@ -374,6 +413,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       stockListText.value = response.tsv;
+      renderTable(response.tsv);
       await copyToClipboard(response.tsv);
       showCustomToast(fetchVndListBtn, "Copied to clipboard", "button");
     } catch (err) {
@@ -468,6 +508,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       stockListText.value = response.tsv;
+      renderTable(response.tsv);
       await copyToClipboard(response.tsv);
       showCustomToast(fetchVpsListBtn, "Copied to clipboard", "button");
     } catch (err) {
@@ -560,6 +601,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       stockListText.value = response.tsv;
+      renderTable(response.tsv);
       await copyToClipboard(response.tsv);
       showCustomToast(fetchSsiListBtn, "Copied to clipboard", "button");
     } catch (err) {
