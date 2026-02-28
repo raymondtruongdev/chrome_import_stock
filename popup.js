@@ -721,7 +721,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // Auto Token SSI
   // ==============================
-  autoSsiTokenUpdateBtn.addEventListener("click", () => {
-    result.textContent = "Tính năng tự động cho SSI đang được phát triển.";
+  autoSsiTokenUpdateBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.url.includes("iboard.ssi.com.vn")) {
+      result.textContent = "Vui lòng mở trang iboard.ssi.com.vn";
+      return;
+    }
+
+    result.textContent = "Đang bắt request SSI...";
+
+    chrome.runtime.sendMessage(
+      { type: "GET_SSI_STOCKPOSITION_CURL", tabId: tab.id },
+      (res) => {
+        if (res?.error) {
+          result.textContent = res.error;
+        } else if (res?.success) {
+          result.textContent = "✅ SSI Token đã được cập nhật tự động!";
+          showCustomToast(autoSsiTokenUpdateBtn, "SSI Token Updated", "button");
+        } else {
+          result.textContent = "Không tìm thấy request /stock-position";
+        }
+      },
+    );
   });
 });

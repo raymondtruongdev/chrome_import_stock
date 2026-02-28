@@ -4,7 +4,11 @@
   "version": "1.0",
   "description": "Fill text field and click Add button on current page",
   "permissions": ["activeTab", "scripting", "storage", "debugger"],
-  "host_permissions": ["https://*.vndirect.com.vn/*", "https://*.vps.com.vn/*"],
+  "host_permissions": [
+    "https://*.vndirect.com.vn/*",
+    "https://*.vps.com.vn/*",
+    "https://*.ssi.com.vn/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"

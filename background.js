@@ -1,16 +1,24 @@
 import { parseVndCurl } from "./utils/vndParser.js";
 import { parseVpsCurl } from "./utils/vpsParser.js";
+import { parseSsiCurl } from "./utils/ssiParser.js";
 import { saveToStorage } from "./utils/storage.js";
 import { buildCurlFromRequest } from "./utils/curlBuilder.js";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type !== "GET_VND_AFTYPE_CURL" && message.type !== "GET_VPS_GETACCOUNTINFO_CURL") return;
+  if (
+    message.type !== "GET_VND_AFTYPE_CURL" &&
+    message.type !== "GET_VPS_GETACCOUNTINFO_CURL" &&
+    message.type !== "GET_SSI_STOCKPOSITION_CURL"
+  )
+    return;
 
   const tabId = message.tabId;
 
   chrome.debugger.attach({ tabId }, "1.3", () => {
     if (chrome.runtime.lastError) {
-      sendResponse({ error: "Không attach được debugger. Có thể do DevTools đang mở." });
+      sendResponse({
+        error: "Không attach được debugger. Có thể do DevTools đang mở.",
+      });
       return;
     }
 
@@ -19,7 +27,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const timeout = setTimeout(() => {
       cleanup();
       sendResponse({
-        error: "Timeout: Không thấy request cần thiết. Hãy reload trang hoặc thử lại.",
+        error:
+          "Timeout: Không thấy request cần thiết. Hãy reload trang hoặc thử lại.",
       });
     }, 15000);
 
@@ -31,12 +40,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       let found = false;
       let parseFunc = null;
 
-      if (message.type === "GET_VND_AFTYPE_CURL" && url.toLowerCase().includes("/aftype")) {
+      if (
+        message.type === "GET_VND_AFTYPE_CURL" &&
+        url.toLowerCase().includes("/aftype")
+      ) {
         found = true;
         parseFunc = parseVndCurl;
-      } else if (message.type === "GET_VPS_GETACCOUNTINFO_CURL" && url.toLowerCase().includes("getaccountinfo")) {
+      } else if (
+        message.type === "GET_VPS_GETACCOUNTINFO_CURL" &&
+        url.toLowerCase().includes("getaccountinfo")
+      ) {
         found = true;
         parseFunc = parseVpsCurl;
+      } else if (
+        message.type === "GET_SSI_STOCKPOSITION_CURL" &&
+        (url.toLowerCase().includes("stock-position") ||
+          url.toLowerCase().includes("additional-shares-stock"))
+      ) {
+        found = true;
+        parseFunc = parseSsiCurl;
       }
 
       if (found) {

@@ -28,19 +28,25 @@ export function parseSsiCurl(curlText) {
 
   const normalized = curlText.replace(/\\\n/g, " ");
 
+  const getHeader = (name) => {
+    // Regex linh hoạt cho header, hỗ trợ cả nháy đơn ' và nháy kép "
+    const regex = new RegExp(`-H\\s+['"]${name}:\\s*([^'"]+)['"]`, "i");
+    const match = normalized.match(regex);
+    return match ? match[1].trim() : "";
+  };
+
   // account
   const accountMatch = normalized.match(/[?&]account=(\d+)/i);
-  const ssi_account = accountMatch ? accountMatch[1] : ""; // 1234567
+  const ssi_account = accountMatch ? accountMatch[1] : ""; 
 
   // bearer token
-  const authMatch = normalized.match(
-    /-H\s+['"]authorization:\s*Bearer\s+([^'"]+)['"]/i,
-  );
-  const ssi_token = authMatch ? authMatch[1].trim() : "";
+  let ssi_token = getHeader("authorization");
+  if (ssi_token.toLowerCase().startsWith("bearer ")) {
+    ssi_token = ssi_token.substring(7).trim();
+  }
 
   // device id
-  const deviceMatch = normalized.match(/-H\s+['"]device-id:\s*([^'"]+)['"]/i);
-  const ssi_device_id = deviceMatch ? deviceMatch[1].trim() : "";
+  const ssi_device_id = getHeader("device-id");
 
   return { ssi_account, ssi_token, ssi_device_id };
 }
