@@ -32,22 +32,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // 🔧 Utils
   // ==============================
-  async function initActiveTab() {
-    if (activeTabId) return activeTabId;
-
-    const [tab] = await chrome.tabs.query({
+  async function getTargetTab(urlPattern) {
+    const [activeTab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     });
+    if (activeTab && activeTab.url.includes(urlPattern)) return activeTab;
 
-    activeTabId = tab.id;
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+    return allTabs.find((t) => t.url.includes(urlPattern));
+  }
 
-    // Inject content.js ONCE
-    await chrome.scripting.executeScript({
-      target: { tabId: activeTabId },
-      files: ["content.js"],
-    });
+  async function initActiveTab(urlPattern = "") {
+    if (activeTabId) return activeTabId;
 
+    const targetTab = await getTargetTab(urlPattern);
+    if (!targetTab) return null;
+
+    activeTabId = targetTab.id;
     return activeTabId;
   }
 
@@ -115,40 +117,54 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   /**
-   * Render TSV string to HTML Table in #result element
-   * @param {string} tsv
+   * Render headers/rows OR TSV string to HTML Table
    */
-  function renderTable(tsv) {
+  function renderTable(headersOrTsv, rows) {
     const resultEl = document.getElementById("result");
-    if (!tsv || !tsv.includes("\t")) {
-      // resultEl.textContent = tsv || ""; // If not TSV, show as text
+    let headers = [];
+    let dataRows = [];
+
+    if (Array.isArray(headersOrTsv) && Array.isArray(rows)) {
+      headers = headersOrTsv;
+      dataRows = rows;
+    } else if (
+      typeof headersOrTsv === "string" &&
+      headersOrTsv.includes("\t")
+    ) {
+      const lines = headersOrTsv.trim().split("\n");
+      if (lines.length > 0) {
+        headers = lines[0].split("\t");
+        dataRows = lines.slice(1).map((l) => l.split("\t"));
+      }
+    } else {
       return;
     }
 
-    const rows = tsv.trim().split("\n");
-    if (rows.length === 0) return;
+    if (headers.length === 0) return;
 
     let html = "<table><thead><tr>";
-
-    // Header
-    const headers = rows[0].split("\t");
     headers.forEach((h) => {
       html += `<th>${h}</th>`;
     });
     html += "</tr></thead><tbody>";
 
-    // Body
-    for (let i = 1; i < rows.length; i++) {
-      const cols = rows[i].split("\t");
+    dataRows.forEach((row) => {
       html += "<tr>";
-      cols.forEach((c) => {
+      row.forEach((c) => {
         html += `<td>${c}</td>`;
       });
       html += "</tr>";
-    }
+    });
 
     html += "</tbody></table>";
     resultEl.innerHTML = html;
+
+    // Cập nhật luôn textbox để tiện copy
+    const tsv = [headers.join("\t"), ...dataRows.map((r) => r.join("\t"))].join(
+      "\n",
+    );
+    stockListText.value = tsv;
+    chrome.storage.local.set({ stockList: tsv });
   }
 
   // ==============================
@@ -370,56 +386,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchVndListBtn);
 
     try {
-      // Lấy VND token từ chrome storage
       const { vnd_account, vnd_token } = await chrome.storage.local.get([
         "vnd_account",
         "vnd_token",
       ]);
 
-      // Kiểm tra tồn tại
       if (!vnd_account || !vnd_token) {
         showAlert("Vui lòng import curl VND trước");
+        setButtonInNormal(fetchVndListBtn, "Fetch VND List");
         return;
       }
 
-      const tabId = await initActiveTab();
-
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: "FETCH_VND_LIST",
-        vnd_account,
-        vnd_token,
-      });
-
-      if (response?.error) {
-        switch (response.error) {
-          case "HTTP_401":
-          case "HTTP_403":
-            showAlert("Token hết hạn. Import curl mới.");
-            return;
-
-          case "FETCH_FAILED":
-            showAlert("Không thể kết nối VND");
-            return;
-
-          default:
-            showAlert("Không lấy được dữ liệu VND");
-            return;
-        }
-      }
-
-      if (!response?.tsv) {
-        showAlert("Dữ liệu trả về rỗng");
-        return;
-      }
-
-      stockListText.value = response.tsv;
-      renderTable(response.tsv);
-      await copyToClipboard(response.tsv);
-      showCustomToast(fetchVndListBtn, "Copied to clipboard", "button");
+      chrome.runtime.sendMessage(
+        {
+          type: "FETCH_VND_LIST",
+          vnd_account,
+          vnd_token,
+        },
+        async (response) => {
+          if (response?.error) {
+            showAlert("Token hết hạn hoặc lỗi kết nối VND. Hãy Auto Update.");
+          } else if (response?.headers && response?.rows) {
+            renderTable(response.headers, response.rows);
+            showCustomToast(fetchVndListBtn, "Portfolio Updated", "button");
+          }
+          setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+        },
+      );
     } catch (err) {
       console.error("[FETCH_VND_LIST]", err);
       showAlert("Có lỗi xảy ra");
-    } finally {
       setButtonInNormal(fetchVndListBtn, "Fetch VND List");
     }
   });
@@ -460,61 +456,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchVpsListBtn);
 
     try {
-      // Lấy từ chrome storage
-      const { vps_deviceNew, vps_session, vps_user, vps_account } =
+      const { vps_session, vps_user, vps_account } =
         await chrome.storage.local.get([
-          "vps_deviceNew",
           "vps_session",
           "vps_user",
           "vps_account",
         ]);
 
-      // Kiểm tra tồn tại
-      if (!vps_deviceNew || !vps_session || !vps_user || !vps_account) {
+      if (!vps_session || !vps_user || !vps_account) {
         showAlert("Vui lòng import curl VPS trước");
+        setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
         return;
       }
 
-      const tabId = await initActiveTab();
-
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: "FETCH_VPS_LIST",
-        deviceNew: vps_deviceNew,
-        session: vps_session,
-        user: vps_user,
-        account: vps_account,
-      });
-
-      if (response?.error) {
-        switch (response.error) {
-          case "HTTP_401":
-          case "HTTP_403":
-            showAlert("Session hết hạn. Import curl mới.");
-            return;
-
-          case "FETCH_FAILED":
-            showAlert("Không thể kết nối VPS");
-            return;
-
-          default:
-            showAlert("Không lấy được dữ liệu VPS");
-            return;
-        }
-      }
-
-      if (!response?.tsv) {
-        showAlert("Dữ liệu trả về rỗng");
-        return;
-      }
-
-      stockListText.value = response.tsv;
-      renderTable(response.tsv);
-      await copyToClipboard(response.tsv);
-      showCustomToast(fetchVpsListBtn, "Copied to clipboard", "button");
+      chrome.runtime.sendMessage(
+        {
+          type: "FETCH_VPS_LIST",
+          vps_session,
+          vps_user,
+          vps_account,
+        },
+        async (response) => {
+          if (response?.error) {
+            showAlert("Session hết hạn hoặc lỗi kết nối VPS. Hãy Auto Update.");
+          } else if (response?.headers && response?.rows) {
+            renderTable(response.headers, response.rows);
+            showCustomToast(fetchVpsListBtn, "Portfolio Updated", "button");
+          }
+          setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
+        },
+      );
     } catch (err) {
       console.error("[FETCH_VPS_LIST]", err);
       showAlert("Có lỗi xảy ra");
-    } finally {
       setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
     }
   });
@@ -555,7 +529,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchSsiListBtn);
 
     try {
-      // Lấy từ chrome storage
       const { ssi_device_id, ssi_token, ssi_account } =
         await chrome.storage.local.get([
           "ssi_device_id",
@@ -563,51 +536,32 @@ document.addEventListener("DOMContentLoaded", async () => {
           "ssi_account",
         ]);
 
-      // Kiểm tra tồn tại
       if (!ssi_device_id || !ssi_token || !ssi_account) {
         showAlert("Vui lòng import curl SSI trước");
+        setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
         return;
       }
 
-      const tabId = await initActiveTab();
-
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: "FETCH_SSI_LIST",
-        deviceId: ssi_device_id,
-        token: ssi_token,
-        account: ssi_account,
-      });
-
-      if (response?.error) {
-        switch (response.error) {
-          case "HTTP_401":
-          case "HTTP_403":
-            showAlert("Token hết hạn. Import curl mới.");
-            return;
-
-          case "FETCH_FAILED":
-            showAlert("Không thể kết nối SSI");
-            return;
-
-          default:
-            showAlert("Không lấy được dữ liệu SSI");
-            return;
-        }
-      }
-
-      if (!response?.tsv) {
-        showAlert("Dữ liệu trả về rỗng");
-        return;
-      }
-
-      stockListText.value = response.tsv;
-      renderTable(response.tsv);
-      await copyToClipboard(response.tsv);
-      showCustomToast(fetchSsiListBtn, "Copied to clipboard", "button");
+      chrome.runtime.sendMessage(
+        {
+          type: "FETCH_SSI_LIST",
+          ssi_deviceId: ssi_device_id,
+          ssi_token,
+          ssi_account,
+        },
+        async (response) => {
+          if (response?.error) {
+            showAlert("Token hết hạn hoặc lỗi kết nối SSI. Hãy Auto Update.");
+          } else if (response?.headers && response?.rows) {
+            renderTable(response.headers, response.rows);
+            showCustomToast(fetchSsiListBtn, "Portfolio Updated", "button");
+          }
+          setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
+        },
+      );
     } catch (err) {
       console.error("[FETCH_SSI_LIST]", err);
       showAlert("Có lỗi xảy ra");
-    } finally {
       setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
     }
   });
@@ -660,12 +614,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Auto Token VND
   // ==============================
   autoVndTokenUpdateBtn.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    const tab = await getTargetTab("trade.vndirect.com.vn");
 
-    if (!tab.url.includes("trade.vndirect.com.vn")) {
+    if (!tab) {
       result.textContent = "Vui lòng mở trang trade.vndirect.com.vn";
       return;
     }
@@ -691,12 +642,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Auto Token VPS
   // ==============================
   autoVpsTokenUpdateBtn.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    const tab = await getTargetTab("smartoneweb.vps.com.vn");
 
-    if (!tab.url.includes("smartoneweb.vps.com.vn")) {
+    if (!tab) {
       result.textContent = "Vui lòng mở trang smartoneweb.vps.com.vn";
       return;
     }
@@ -722,12 +670,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Auto Token SSI
   // ==============================
   autoSsiTokenUpdateBtn.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    const tab = await getTargetTab("iboard.ssi.com.vn");
 
-    if (!tab.url.includes("iboard.ssi.com.vn")) {
+    if (!tab) {
       result.textContent = "Vui lòng mở trang iboard.ssi.com.vn";
       return;
     }

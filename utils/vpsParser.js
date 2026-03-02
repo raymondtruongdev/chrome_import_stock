@@ -27,7 +27,7 @@
 /**
  * Parse VND curl string
  * @param {string} curlText
- * @returns {{ vps_deviceNew, vps_session, vps_user, vps_account,: string }}
+ * @returns {{ vps_session, vps_user, vps_account,: string }}
  */
 export function parseVpsCurl(curlText) {
   if (!curlText) throw new Error("Curl empty");
@@ -40,7 +40,6 @@ export function parseVpsCurl(curlText) {
     return match ? match[1].trim() : "";
   };
 
-  const vps_deviceNew = getHeader("x-device-new");
   const vps_session = getHeader("x-session");
   const vps_user = getHeader("x-user");
 
@@ -56,7 +55,6 @@ export function parseVpsCurl(curlText) {
   }
 
   return {
-    vps_deviceNew,
     vps_session,
     vps_user,
     vps_account,

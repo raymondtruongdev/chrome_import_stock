@@ -3,7 +3,7 @@
   "name": "Import Stock VN",
   "version": "1.0",
   "description": "Fill text field and click Add button on current page",
-  "permissions": ["activeTab", "scripting", "storage", "debugger"],
+  "permissions": ["activeTab", "scripting", "storage", "debugger", "declarativeNetRequest"],
   "host_permissions": [
     "https://*.vndirect.com.vn/*",
     "https://*.vps.com.vn/*",
