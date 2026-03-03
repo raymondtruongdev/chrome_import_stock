@@ -15,27 +15,11 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   const normalizeText = (text = "") =>
     text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
 
-  const normalizeHeader = (text = "") => normalizeText(text).toLowerCase();
-
-  function findHeaderIndex(headers, key) {
-    const normalizedKey = normalizeHeader(key);
-    return headers.findIndex((h) => normalizeHeader(h).includes(normalizedKey));
-  }
-
-  const buildTSV = (headers, rows) =>
-    [headers.join("\t"), ...rows.map((r) => r.join("\t"))].join("\n");
 
   const respondEmpty = (sendResponse) => {
     sendResponse({ tsv: "", headers: [], rows: [] });
   };
 
-  function divideBy1000(value) {
-    if (!value) return "";
-
-    const num = Number(value.replace(/,/g, "").replace(/\s/g, ""));
-
-    return Number.isNaN(num) ? value : num / 1000;
-  }
 
   // ==================
   // FireAnt helpers
@@ -120,59 +104,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
   }
 
-  // ==================
-  // Table parsing
-  // ==================
-  function parseTable({
-    tableSelector,
-    bodySelector = "tbody",
-    headerCleaner,
-  }) {
-    const table = document.querySelector(tableSelector);
-    if (!table) return null;
 
-    const headers = [...table.querySelectorAll("thead th")]
-      .map((th) => {
-        const node = headerCleaner ? th.cloneNode(true) : th;
-        headerCleaner?.(node);
-        return normalizeText(node.textContent || node.innerText);
-      })
-      .filter(Boolean);
-
-    const body = table.querySelector(bodySelector);
-    const rows = body
-      ? [...body.querySelectorAll("tr")].map((tr) =>
-          [...tr.querySelectorAll("td")].map((td) =>
-            normalizeText(td.textContent || td.innerText),
-          ),
-        )
-      : [];
-
-    return { headers, rows };
-  }
-
-  /**
-   * Map / reorder / rename columns from a parsed HTML table
-   */
-  function mapTableColumns({ outputColumns, headers, rows }) {
-    if (!headers?.length || !rows?.length) {
-      return { headers: [], rows: [] };
-    }
-
-    const mappedHeaders = outputColumns.map((c) => c.label);
-
-    const mappedRows = rows.map((row) =>
-      outputColumns.map((c) => {
-        const idx = findHeaderIndex(headers, c.key);
-        if (idx === -1) return "";
-
-        const raw = row[idx] ?? "";
-        return typeof c.transform === "function" ? c.transform(raw) : raw;
-      }),
-    );
-
-    return { headers: mappedHeaders, rows: mappedRows };
-  }
 
   // ==================
   // Message Listener
@@ -236,63 +168,80 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
     // ========= VPS =========
     if (message.type === "GET_VPS_LIST") {
-      const result = parseTable({
-        tableSelector: 'table[data-testid="portfolio-table-table"]',
-        bodySelector: 'tbody[data-testid="portfolio-table-body"]',
-      });
+      console.log("[CONTENT] GET_VPS_LIST received");
 
-      if (!result) {
+      const table =
+        document.querySelector('table[data-testid="portfolio-table-table"]') ||
+        document.querySelector(".vps-portfolio-table table") ||
+        document.querySelector("table.portfolio-table");
+
+      if (!table) {
+        console.warn("[CONTENT] VPS Portfolio table not found");
         respondEmpty(sendResponse);
         return true;
       }
 
-      const mapped = mapTableColumns({
-        ...result,
-        outputColumns: [
-          { key: "Mã CK", label: "Mã" },
-          { key: "Tổng", label: "KL" },
-          { key: "Có thể bán", label: "GD" },
-          { key: "Giá TB", label: "Giá TB" },
-          { key: "Giá TT", label: "Giá hiện tại" },
-        ],
-      });
+      const headers = [...table.querySelectorAll("thead th")]
+        .map((th) => {
+          const clone = th.cloneNode(true);
+          clone.querySelectorAll("i, span").forEach((el) => el.remove());
+          return normalizeText(clone.textContent || clone.innerText);
+        })
+        .filter(Boolean);
 
-      const tsv = buildTSV(mapped.headers, mapped.rows);
-      sendResponse({ ...mapped, tsv });
+      const body =
+        table.querySelector('tbody[data-testid="portfolio-table-body"]') ||
+        table.querySelector("tbody");
+
+      const rows = body
+        ? [...body.querySelectorAll("tr")].map((tr) =>
+            [...tr.querySelectorAll("td")].map((td) =>
+              normalizeText(td.textContent || td.innerText),
+            ),
+          )
+        : [];
+
+      console.log("[CONTENT] Sending raw headers and rows back to popup (VPS)");
+      sendResponse({ headers, rows });
       chrome.runtime.sendMessage({ type: "GET_VPS_LIST_DONE" });
       return true;
     }
 
     // ========= VND =========
     if (message.type === "GET_VND_LIST") {
-      const result = parseTable({
-        tableSelector: "table.portfolio-data",
-        headerCleaner: (clone) =>
-          clone.querySelectorAll("i, span").forEach((el) => el.remove()),
-      });
+      console.log("[CONTENT] GET_VND_LIST received");
 
-      if (!result) {
+      // Thử tìm bảng với nhiều selector khác nhau của VNDirect
+      const table =
+        document.querySelector("table.portfolio-data") ||
+        document.querySelector("table.table-statement") ||
+        document.querySelector(".portfolio-table table");
+
+      if (!table) {
+        console.warn("[CONTENT] VND Portfolio table not found");
         respondEmpty(sendResponse);
         return true;
       }
 
-      const mapped = mapTableColumns({
-        ...result,
-        outputColumns: [
-          { key: "Mã", label: "Mã" },
-          { key: "KL", label: "KL" },
-          { key: "GD", label: "GD" },
-          { key: "Giá vốn", label: "Giá TB", transform: divideBy1000 },
-          {
-            key: "Giá hiện tại",
-            label: "Giá hiện tại",
-            transform: divideBy1000,
-          },
-        ],
-      });
+      const headers = [...table.querySelectorAll("thead th")]
+        .map((th) => {
+          const clone = th.cloneNode(true);
+          clone.querySelectorAll("i, span").forEach((el) => el.remove());
+          return normalizeText(clone.textContent || clone.innerText);
+        })
+        .filter(Boolean);
 
-      const tsv = buildTSV(mapped.headers, mapped.rows);
-      sendResponse({ ...mapped, tsv });
+      const body = table.querySelector("tbody");
+      const rows = body
+        ? [...body.querySelectorAll("tr")].map((tr) =>
+            [...tr.querySelectorAll("td")].map((td) =>
+              normalizeText(td.textContent || td.innerText),
+            ),
+          )
+        : [];
+
+      console.log("[CONTENT] Sending raw headers and rows back to popup");
+      sendResponse({ headers, rows });
       chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
       return true;
     }

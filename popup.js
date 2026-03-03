@@ -1,3 +1,5 @@
+import { buildTSV, mapTableColumns } from "./utils/tsvHelper.js";
+
 document.addEventListener("DOMContentLoaded", async () => {
   const stockListText = document.getElementById("stockListText");
   const importFireantBtn = document.getElementById("importFireantBtn");
@@ -309,25 +311,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabId = await initActiveTab();
 
     chrome.tabs.sendMessage(tabId, { type: "GET_VPS_LIST" }, async (res) => {
-      if (!res || !res.tsv) {
-        console.warn("No TSV received");
+      if (!res || !res.headers) {
+        console.warn("No data received from VPS");
+        setButtonInNormal(getVPSListBtn, "Get VPS List");
         return;
       }
 
+      const mapped = mapTableColumns({
+        ...res,
+        outputColumns: [
+          { key: "Mã CK", label: "Mã" },
+          { key: "Tổng", label: "KL" },
+          { key: "Có thể bán", label: "GD" },
+          { key: "Giá TB", label: "Giá TB", transform: multiplyBy1000 },
+          { key: "Giá TT", label: "Giá hiện tại", transform: multiplyBy1000 },
+        ],
+      });
+
+      const tsv = buildTSV(mapped.headers, mapped.rows);
+
       // Show in Textbox
-      stockListText.value = res.tsv;
-      renderTable(res.tsv);
+      stockListText.value = tsv;
+      renderTable(tsv);
 
       // Auto copy to CLIPBOARD
-      await copyToClipboard(res.tsv);
+      await copyToClipboard(tsv);
 
       // Show TOAST 2s
       showCustomToast(getVPSListBtn, "Copied to clipboard", "button");
 
-      // Save to local storage
-      // chrome.storage.local.set({stockList: res.tsv,});
+      setButtonInNormal(getVPSListBtn, "Get VPS List");
     });
   });
+
+  function divideBy1000(value) {
+    if (!value) return "";
+    const num = Number(value.replace(/,/g, "").replace(/\s/g, ""));
+    return Number.isNaN(num) ? value : num / 1000;
+  }
+
+  function multiplyBy1000(value) {
+    if (!value) return "";
+    const num = Number(value.replace(/,/g, "").replace(/\s/g, ""));
+    return Number.isNaN(num) ? value : num * 1000;
+  }
 
   // ==============================
   // ▶ GET VND LIST
@@ -338,14 +365,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabId = await initActiveTab();
 
     chrome.tabs.sendMessage(tabId, { type: "GET_VND_LIST" }, async (res) => {
-      if (!res || !res.tsv) {
-        console.warn("No TSV received");
+      if (!res || !res.headers) {
+        console.warn("No data received from VND");
+        setButtonInNormal(getVndListBtn, "Get VND List");
         return;
       }
 
-      stockListText.value = res.tsv;
-      await copyToClipboard(res.tsv);
+      const mapped = mapTableColumns({
+        ...res,
+        outputColumns: [
+          { key: "Mã", label: "Mã" },
+          { key: "KL", label: "KL" },
+          { key: "GD", label: "GD" },
+          { key: "Giá vốn", label: "Giá TB" },
+          {
+            key: "Giá hiện tại",
+            label: "Giá hiện tại",
+          },
+        ],
+      });
+
+      const tsv = buildTSV(mapped.headers, mapped.rows);
+
+      stockListText.value = tsv;
+      renderTable(tsv);
+      await copyToClipboard(tsv);
       showCustomToast(getVndListBtn, "Copied to clipboard", "button");
+      setButtonInNormal(getVndListBtn, "Get VND List");
     });
   });
 

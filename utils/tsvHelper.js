@@ -1,8 +1,15 @@
+export const normalizeText = (text = "") =>
+  text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+
+export const normalizeHeader = (text = "") => normalizeText(text).toLowerCase();
+
 export const buildTSV = (headers, rows) =>
   [headers.join("\t"), ...rows.map((r) => r.join("\t"))].join("\n");
 
-export const findHeaderIndex = (headers, key) =>
-  headers.findIndex((h) => h.toLowerCase() === key.toLowerCase());
+export function findHeaderIndex(headers, key) {
+  const normalizedKey = normalizeHeader(key);
+  return headers.findIndex((h) => normalizeHeader(h).includes(normalizedKey));
+}
 
 export function mapTableColumns({ outputColumns, headers, rows }) {
   if (!headers?.length || !rows?.length) {
