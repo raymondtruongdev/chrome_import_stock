@@ -162,6 +162,41 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       return true;
     }
 
+    // ====================================
+    // ▶ CLEAR VNDIRECT
+    // ====================================
+    if (message.type === "CLEAR_VNDIRECT") {
+      const tbody = document.getElementById("banggia-khop-lenh-body");
+      if (!tbody) {
+        sendResponse({ error: "[CONTENT] Vndirect Table body not found" });
+        return;
+      }
+
+      const symbols = tbody
+        ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean)
+        : [];
+
+      console.log("[CONTENT] Symbols:", symbols);
+
+      // async remove one-by-one
+      (async () => {
+        for (const symbol of symbols) {
+          if (typeof window.removeSymbolFromBoard === "function") {
+            window.removeSymbolFromBoard(symbol);
+            console.log("[CONTENT] Removed:", symbol);
+          } else {
+            // fallback: click
+            tbody.querySelector(`tr#${CSS.escape(symbol)} a.remove`)?.click();
+          }
+
+          // wait DOM update
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        sendResponse({ success: true });
+      })();
+      return true; // keep message channel alive
+    }
+
     // ========= VPS =========
     if (message.type === "GET_VPS_LIST") {
       console.log("[CONTENT] GET_VPS_LIST received");
