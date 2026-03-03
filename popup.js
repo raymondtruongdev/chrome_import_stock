@@ -616,7 +616,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       chrome.runtime.sendMessage(
         {
           type: "FETCH_SSI_LIST",
-          ssi_deviceId: ssi_device_id,
+          ssi_device_id,
           ssi_token,
           ssi_account,
         },
@@ -683,7 +683,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
-  // Auto Token VND
+  // Auto update VND Token (cách này vì VND khó lấy token từ content script, nên phải bắt request để lấy)
   // ==============================
   autoVndTokenUpdateBtn.addEventListener("click", async () => {
     const tab = await getTargetTab("trade.vndirect.com.vn");
@@ -711,7 +711,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
-  // Auto Token VPS
+  // Auto update VPS Token (cách này vì VPS khó lấy token từ content script, nên phải bắt request để lấy)
   // ==============================
   autoVpsTokenUpdateBtn.addEventListener("click", async () => {
     const tab = await getTargetTab("smartoneweb.vps.com.vn");
@@ -739,28 +739,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ==============================
-  // Auto Token SSI
+  // Auto update SSI Token
   // ==============================
   autoSsiTokenUpdateBtn.addEventListener("click", async () => {
     const tab = await getTargetTab("iboard.ssi.com.vn");
-
     if (!tab) {
       result.textContent = "Vui lòng mở trang iboard.ssi.com.vn";
       return;
     }
-
     result.textContent = "Đang bắt request SSI...";
-
-    chrome.runtime.sendMessage(
-      { type: "GET_SSI_STOCKPOSITION_CURL", tabId: tab.id },
-      (res) => {
+    const tabId = tab.id;
+    // SSI token is stored in localStorage of ssi website, we can read it directly with 'content.js'
+    // , no need to use debugger to capture request like VND/VPS
+    chrome.tabs.sendMessage(
+      tabId,
+      { type: "AUTO_FIND_SSI_TOKEN" },
+      async (res) => {
         if (res?.error) {
           result.textContent = res.error;
         } else if (res?.success) {
           result.textContent = "✅ SSI Token đã được cập nhật tự động!";
           showCustomToast(autoSsiTokenUpdateBtn, "SSI Token Updated", "button");
-        } else {
-          result.textContent = "Không tìm thấy request /stock-position";
+          chrome.storage.local.set({
+            ssi_account: res.ssi_account + "1", // Hardcode SSI account 1
+            ssi_token: res.ssi_token,
+            ssi_device_id: res.ssi_device_id,
+          });
         }
       },
     );

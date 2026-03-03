@@ -1,6 +1,5 @@
 import { parseVndCurl } from "./utils/vndParser.js";
 import { parseVpsCurl } from "./utils/vpsParser.js";
-import { parseSsiCurl } from "./utils/ssiParser.js";
 import { saveToStorage } from "./utils/storage.js";
 import { buildCurlFromRequest } from "./utils/curlBuilder.js";
 import { buildTSVFromData } from "./utils/tsvHelper.js";
@@ -46,8 +45,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ====================================
   if (
     message.type === "GET_VND_AFTYPE_CURL" ||
-    message.type === "GET_VPS_GETACCOUNTINFO_CURL" ||
-    message.type === "GET_SSI_STOCKPOSITION_CURL"
+    message.type === "GET_VPS_GETACCOUNTINFO_CURL"
   ) {
     const tabId = message.tabId;
 
@@ -88,15 +86,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ) {
           found = true;
           parseFunc = parseVpsCurl;
-        } else if (
-          message.type === "GET_SSI_STOCKPOSITION_CURL" &&
-          (url.toLowerCase().includes("stock-position") ||
-            url.toLowerCase().includes("additional-shares-stock"))
-        ) {
-          found = true;
-          parseFunc = parseSsiCurl;
         }
-
         if (found) {
           const curl = buildCurlFromRequest(params.request);
           cleanup();
@@ -236,7 +226,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             headers: {
               Accept: "application/json, text/plain, */*",
               Authorization: `Bearer ${message.ssi_token}`,
-              "device-id": message.ssi_deviceId,
+              "device-id": message.ssi_device_id,
             },
           },
         );

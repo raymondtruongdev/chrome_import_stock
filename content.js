@@ -241,5 +241,17 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
       return true;
     }
+    // ========= AUTO FIND SSI TOKEN =========
+    if (message.type === "AUTO_FIND_SSI_TOKEN") {
+      // SSI token is stored in localStorage of ssi website, we can read it directly
+      try {
+        const ssi_token = localStorage.getItem("token");
+        const ssi_device_id = localStorage.getItem("deviceId");
+        const ssi_account = localStorage.getItem("ssiChatbotUserId");
+        sendResponse({ success: true, ssi_token, ssi_device_id, ssi_account });
+      } catch (err) {
+        sendResponse({ error: "CANNOT FIND SSI TOKEN: " + err.message });
+      }
+    }
   });
 }
