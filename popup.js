@@ -306,10 +306,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ▶ GET VPS LIST
   // ==============================
   getVPSListBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (tab.url !== "https://smartoneweb.vps.com.vn/assets-normal") {
+      showAlert(
+        "Vui lòng mở trang Danh mục của VNDirect (https://smartoneweb.vps.com.vn/assets-normal) để lấy dữ liệu.",
+      );
+      return;
+    }
+
     setButtonInProcessing(getVPSListBtn);
 
-    const tabId = await initActiveTab();
-
+    const tabId = tab.id;
     chrome.tabs.sendMessage(tabId, { type: "GET_VPS_LIST" }, async (res) => {
       if (!res || !res.headers) {
         console.warn("No data received from VPS");
@@ -360,9 +371,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ▶ GET VND LIST
   // ==============================
   getVndListBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (tab.url !== "https://trade.vndirect.com.vn/giao-dich/danh-muc") {
+      showAlert(
+        "Vui lòng mở trang Danh mục của VNDirect (https://trade.vndirect.com.vn/giao-dich/danh-muc) để lấy dữ liệu.",
+      );
+      return;
+    }
+
     setButtonInProcessing(getVndListBtn);
 
-    const tabId = await initActiveTab();
+    const tabId = tab.id;
 
     chrome.tabs.sendMessage(tabId, { type: "GET_VND_LIST" }, async (res) => {
       if (!res || !res.headers) {

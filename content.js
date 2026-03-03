@@ -15,11 +15,9 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   const normalizeText = (text = "") =>
     text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
 
-
   const respondEmpty = (sendResponse) => {
     sendResponse({ tsv: "", headers: [], rows: [] });
   };
-
 
   // ==================
   // FireAnt helpers
@@ -103,8 +101,6 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       await sleep(100);
     }
   }
-
-
 
   // ==================
   // Message Listener
