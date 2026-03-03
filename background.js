@@ -3,6 +3,7 @@ import { parseVpsCurl } from "./utils/vpsParser.js";
 import { parseSsiCurl } from "./utils/ssiParser.js";
 import { saveToStorage } from "./utils/storage.js";
 import { buildCurlFromRequest } from "./utils/curlBuilder.js";
+import { buildTSVFromData } from "./utils/tsvHelper.js";
 
 // ====================================
 // KHAI BÁO RULE CHO VPS ĐỂ VƯỢT CORS
@@ -152,7 +153,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           headers.map((h) => item[h] || ""),
         );
 
-        sendResponse({ headers, rows });
+        const tsv = buildTSVFromData(headers, rows);
+        sendResponse({ headers, rows, tsv });
       } catch (err) {
         sendResponse({ error: "FETCH_FAILED: " + err.message });
       }
@@ -201,14 +203,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const list = json.data || json.result || [];
         const filteredList = list.filter((item) => item.symbol !== "TOTAL");
         const headers = ["symbol", "quantity", "averagePrice", "currentPrice"];
-        const rows = filteredList.map((item) => [
-          item.symbol || "",
-          item.actual_vol || 0,
-          item.avg_price || 0,
-          item.market_price || 0,
-        ]);
+        const rows = filteredList.map((item) => {
+          const averagePrice =
+            parseFloat((item.avg_price ?? "0").toString().trim()) * 1000;
+          const currentPrice =
+            parseFloat((item.market_price ?? "0").toString().trim()) * 1000;
 
-        sendResponse({ headers, rows });
+          return [
+            item.symbol || "",
+            item.actual_vol || 0,
+            averagePrice,
+            currentPrice,
+          ];
+        });
+
+        const tsv = buildTSVFromData(headers, rows);
+        sendResponse({ headers, rows, tsv });
       } catch (err) {
         sendResponse({ error: "FETCH_FAILED: " + err.message });
       }
@@ -253,7 +263,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           item.matchedPrice || item.refPrice || 0, // Fallback nếu marketPrice bằng 0
         ]);
 
-        sendResponse({ headers, rows });
+        const tsv = buildTSVFromData(headers, rows);
+        sendResponse({ headers, rows, tsv });
       } catch (err) {
         sendResponse({ error: "FETCH_FAILED: " + err.message });
       }

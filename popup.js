@@ -407,6 +407,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (response?.error) {
             showAlert("Token hết hạn hoặc lỗi kết nối VND. Hãy Auto Update.");
           } else if (response?.headers && response?.rows) {
+            copyToClipboard(response.tsv);
             renderTable(response.headers, response.rows);
             showCustomToast(fetchVndListBtn, "Portfolio Updated", "button");
           }
@@ -480,6 +481,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (response?.error) {
             showAlert("Session hết hạn hoặc lỗi kết nối VPS. Hãy Auto Update.");
           } else if (response?.headers && response?.rows) {
+            copyToClipboard(response.tsv);
             renderTable(response.headers, response.rows);
             showCustomToast(fetchVpsListBtn, "Portfolio Updated", "button");
           }
@@ -553,6 +555,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (response?.error) {
             showAlert("Token hết hạn hoặc lỗi kết nối SSI. Hãy Auto Update.");
           } else if (response?.headers && response?.rows) {
+            copyToClipboard(response.tsv);
             renderTable(response.headers, response.rows);
             showCustomToast(fetchSsiListBtn, "Portfolio Updated", "button");
           }
