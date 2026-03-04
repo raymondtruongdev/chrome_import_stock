@@ -58,13 +58,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function setButtonInNormal(btn) {
     btn.disabled = false;
-    if (btn.dataset.originalText) {
-      btn.textContent = btn.dataset.originalText;
+    if (btn.dataset.originalHtml) {
+      btn.innerHTML = btn.dataset.originalHtml;
     }
   }
 
   function setButtonInProcessing(btn, text = "Processing...") {
-    btn.dataset.originalText = btn.textContent;
+    btn.dataset.originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = text;
   }
