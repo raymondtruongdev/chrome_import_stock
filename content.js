@@ -15,10 +15,6 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   const normalizeText = (text = "") =>
     text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
 
-  const respondEmpty = (sendResponse) => {
-    sendResponse({ tsv: "", headers: [], rows: [] });
-  };
-
   // ==================
   // FireAnt helpers
   // ==================
@@ -109,15 +105,14 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ========= FIREANT =========
     if (message.type === "GET_STOCK_LIST_FIREANT") {
       const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
-        .map((div) =>
-          div
-            .querySelector('a[href^="/charts/content/symbols/"]')
-            ?.textContent.trim(),
-        )
-        .filter(Boolean);
+        .map((div) => div.querySelector("a")?.textContent.trim())
+        .filter((text) => text && text.length === 3);
 
+      if (symbols.length === 0) {
+        sendResponse({ error: "[CONTENT] FireAnt symbols not found" });
+        return;
+      }
       sendResponse({ symbols });
-      chrome.runtime.sendMessage({ type: "GET_FIREANT_DONE" });
       return true;
     }
 
@@ -130,16 +125,14 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
     if (message.type === "CLEAR_FIREANT") {
       const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
-        .map((div) =>
-          div
-            .querySelector('a[href^="/charts/content/symbols/"]')
-            ?.textContent.trim(),
-        )
-        .filter(Boolean);
+        .map((div) => div.querySelector("a")?.textContent.trim())
+        .filter((text) => text && text.length === 3);
 
-      addSymbolFireant(symbols).then(() =>
-        chrome.runtime.sendMessage({ type: "CLEAR_FIREANT_DONE" }),
-      );
+      if (symbols.length === 0) {
+        sendResponse({ error: "[CONTENT] FireAnt symbols not found" });
+        return;
+      }
+      addSymbolFireant(symbols).then(() => sendResponse({ success: true }));
       return true;
     }
 
@@ -149,9 +142,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       const symbols = tbody
         ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean)
         : [];
-
       sendResponse({ symbols });
-      chrome.runtime.sendMessage({ type: "GET_VNDIRECT_DONE" });
       return true;
     }
 
@@ -199,16 +190,13 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
 
     // ========= VPS =========
     if (message.type === "GET_VPS_LIST") {
-      console.log("[CONTENT] GET_VPS_LIST received");
-
       const table =
         document.querySelector('table[data-testid="portfolio-table-table"]') ||
         document.querySelector(".vps-portfolio-table table") ||
         document.querySelector("table.portfolio-table");
 
       if (!table) {
-        console.warn("[CONTENT] VPS Portfolio table not found");
-        respondEmpty(sendResponse);
+        sendResponse({ error: "VPS Portfolio table not found" });
         return true;
       }
 
@@ -231,17 +219,18 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
             ),
           )
         : [];
+      // The first row VPS retunrs is Total row, we can ignore it if it's the only row
+      if (body == null || rows.length === 1) {
+        sendResponse({ error: "VPS Portfolio table body not found or empty" });
+        return true;
+      }
+      sendResponse({ success: true, headers, rows });
 
-      console.log("[CONTENT] Sending raw headers and rows back to popup (VPS)");
-      sendResponse({ headers, rows });
-      chrome.runtime.sendMessage({ type: "GET_VPS_LIST_DONE" });
       return true;
     }
 
     // ========= VND =========
     if (message.type === "GET_VND_LIST") {
-      console.log("[CONTENT] GET_VND_LIST received");
-
       // Thử tìm bảng với nhiều selector khác nhau của VNDirect
       const table =
         document.querySelector("table.portfolio-data") ||
@@ -249,8 +238,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         document.querySelector(".portfolio-table table");
 
       if (!table) {
-        console.warn("[CONTENT] VND Portfolio table not found");
-        respondEmpty(sendResponse);
+        sendResponse({ error: "VND Portfolio table not found" });
         return true;
       }
 
@@ -271,9 +259,12 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
           )
         : [];
 
-      console.log("[CONTENT] Sending raw headers and rows back to popup");
-      sendResponse({ headers, rows });
-      chrome.runtime.sendMessage({ type: "GET_VND_LIST_DONE" });
+      if (body == null || rows.length === 0) {
+        sendResponse({ error: "VND Portfolio table body not found or empty" });
+        return true;
+      }
+      sendResponse({ success: true, headers, rows });
+
       return true;
     }
     // ========= AUTO FIND SSI TOKEN =========

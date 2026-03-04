@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const autoVndTokenUpdateBtn = document.getElementById("autoVndTokenUpdate");
   const autoVpsTokenUpdateBtn = document.getElementById("autoVpsTokenUpdate");
   const autoSsiTokenUpdateBtn = document.getElementById("autoSsiTokenUpdate");
+  const result = document.getElementById("result");
 
   let activeTabId = null;
 
@@ -55,12 +56,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     return activeTabId;
   }
 
-  function setButtonInNormal(btn, text) {
+  function setButtonInNormal(btn) {
     btn.disabled = false;
-    btn.textContent = text;
+    if (btn.dataset.originalText) {
+      btn.textContent = btn.dataset.originalText;
+    }
   }
 
   function setButtonInProcessing(btn, text = "Processing...") {
+    btn.dataset.originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = text;
   }
@@ -122,7 +126,6 @@ document.addEventListener("DOMContentLoaded", async () => {
    * Render headers/rows OR TSV string to HTML Table
    */
   function renderTable(headersOrTsv, rows) {
-    const resultEl = document.getElementById("result");
     let headers = [];
     let dataRows = [];
 
@@ -159,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     html += "</tbody></table>";
-    resultEl.innerHTML = html;
+    result.innerHTML = html;
 
     // Cập nhật luôn textbox để tiện copy
     const tsv = [headers.join("\t"), ...dataRows.map((r) => r.join("\t"))].join(
@@ -175,7 +178,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   clearTextboxBtn.addEventListener("click", async () => {
     // Clear UI
     stockListText.value = "";
-    document.getElementById("result").innerHTML = ""; // Clear table
+    result.innerHTML = ""; // Clear table
     chrome.storage.local.set({ stockList: "" });
   });
 
@@ -193,20 +196,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 📥 GET FIREANT DATA
   // ==============================
   getFireantBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (!tab?.url?.includes("fireant.vn/")) {
+      showAlert(
+        "Vui lòng mở trang https://fireant.vn/dashboard + mở Watchlist rồi thử lại.",
+      );
+      return;
+    }
+    const tabId = tab.id;
+
     setButtonInProcessing(getFireantBtn);
-    const tabId = await initActiveTab();
     var text = [];
     chrome.tabs.sendMessage(
       tabId,
       { type: "GET_STOCK_LIST_FIREANT" },
       (res) => {
-        if (res?.symbols?.length) {
+        if (res?.error) {
+          result.textContent = res.error;
+        } else if (res?.symbols?.length) {
           text = res.symbols.join(",");
           stockListText.value = text;
           chrome.storage.local.set({ stockList: text });
-        } else {
-          showAlert("Vui lòng mở trang https://fireant.vn/charts và thử lại.");
         }
+        setButtonInNormal(getFireantBtn);
       },
     );
   });
@@ -223,7 +238,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .filter(Boolean);
 
     if (!symbols.length) {
-      setButtonInNormal(importFireantBtn, "Import Fireant");
+      setButtonInNormal(importFireantBtn);
       return;
     }
 
@@ -241,8 +256,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   clearFireantBtn.addEventListener("click", async () => {
     setButtonInProcessing(clearFireantBtn);
     const tabId = await initActiveTab();
-    chrome.tabs.sendMessage(tabId, {
-      type: "CLEAR_FIREANT",
+    chrome.tabs.sendMessage(tabId, { type: "CLEAR_FIREANT" }, async (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.success) {
+        result.textContent = "✅ FireAnt Symbols cleared!";
+      }
+      setButtonInNormal(clearFireantBtn);
     });
   });
 
@@ -250,9 +270,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 📥 GET VNDIRECT DATA
   // ==============================
   getVndBtn.addEventListener("click", async () => {
-    setButtonInProcessing(getVndBtn);
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
 
-    const tabId = await initActiveTab();
+    if (!tab?.url?.includes("trade.vndirect.com.vn/chung-khoan/danh-muc")) {
+      showAlert(
+        "Vui lòng mở trang https://trade.vndirect.com.vn/chung-khoan/danh-muc rồi thử lại.",
+      );
+      return;
+    }
+    const tabId = tab.id;
+    setButtonInProcessing(getVndBtn);
     var text = [];
 
     chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_VND" }, (res) => {
@@ -260,6 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         text = res.symbols.join(",");
         stockListText.value = text;
         chrome.storage.local.set({ stockList: text });
+        setButtonInNormal(getVndBtn);
       } else {
         showAlert(
           "Vui lòng mở trang https://trade.vndirect.com.vn/ và thử lại.",
@@ -279,7 +310,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .filter(Boolean);
 
     if (!symbols.length) {
-      setButtonInNormal(importVndBtn, "Import Vndirect");
+      setButtonInNormal(importVndBtn);
       return;
     }
 
@@ -297,8 +328,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   clearVndBtn.addEventListener("click", async () => {
     setButtonInProcessing(clearVndBtn);
     const tabId = await initActiveTab();
-    chrome.tabs.sendMessage(tabId, {
-      type: "CLEAR_VNDIRECT",
+    chrome.tabs.sendMessage(tabId, { type: "CLEAR_VNDIRECT" }, async (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.success) {
+        result.textContent = "✅ VNDIRECT Symbols cleared!";
+      }
+      setButtonInNormal(clearVndBtn);
     });
   });
 
@@ -313,7 +349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (tab.url !== "https://smartoneweb.vps.com.vn/assets-normal") {
       showAlert(
-        "Vui lòng mở trang Danh mục của VNDirect (https://smartoneweb.vps.com.vn/assets-normal) để lấy dữ liệu.",
+        "Vui lòng mở trang Danh mục của VPS (https://smartoneweb.vps.com.vn/assets-normal để lấy dữ liệu.",
       );
       return;
     }
@@ -322,9 +358,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const tabId = tab.id;
     chrome.tabs.sendMessage(tabId, { type: "GET_VPS_LIST" }, async (res) => {
-      if (!res || !res.headers) {
-        console.warn("No data received from VPS");
-        setButtonInNormal(getVPSListBtn, "Get VPS List");
+      if (res?.error) {
+        showAlert(res.error);
+        result.textContent = "❌ " + res.error;
+        setButtonInNormal(getVPSListBtn);
         return;
       }
 
@@ -351,7 +388,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Show TOAST 2s
       showCustomToast(getVPSListBtn, "Copied to clipboard", "button");
 
-      setButtonInNormal(getVPSListBtn, "Get VPS List");
+      setButtonInNormal(getVPSListBtn);
     });
   });
 
@@ -388,9 +425,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabId = tab.id;
 
     chrome.tabs.sendMessage(tabId, { type: "GET_VND_LIST" }, async (res) => {
-      if (!res || !res.headers) {
-        console.warn("No data received from VND");
-        setButtonInNormal(getVndListBtn, "Get VND List");
+      if (res?.error) {
+        showAlert(res.error);
+        result.textContent = "❌ " + res.error;
+        setButtonInNormal(getVndListBtn);
         return;
       }
 
@@ -414,7 +452,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderTable(tsv);
       await copyToClipboard(tsv);
       showCustomToast(getVndListBtn, "Copied to clipboard", "button");
-      setButtonInNormal(getVndListBtn, "Get VND List");
+      setButtonInNormal(getVndListBtn);
     });
   });
 
@@ -442,7 +480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(inputVndTokenUpdateBtn, "Update VND Token");
+        setButtonInNormal(inputVndTokenUpdateBtn);
       },
     );
   });
@@ -462,7 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!vnd_account || !vnd_token) {
         showAlert("Vui lòng import curl VND trước");
-        setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+        setButtonInNormal(fetchVndListBtn);
         return;
       }
 
@@ -480,13 +518,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             renderTable(response.headers, response.rows);
             showCustomToast(fetchVndListBtn, "Portfolio Updated", "button");
           }
-          setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+          setButtonInNormal(fetchVndListBtn);
         },
       );
     } catch (err) {
       console.error("[FETCH_VND_LIST]", err);
       showAlert("Có lỗi xảy ra");
-      setButtonInNormal(fetchVndListBtn, "Fetch VND List");
+      setButtonInNormal(fetchVndListBtn);
     }
   });
 
@@ -514,7 +552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(inputVpsTokenUpdateBtn, "Update VPS Token");
+        setButtonInNormal(inputVpsTokenUpdateBtn);
       },
     );
   });
@@ -535,7 +573,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!vps_session || !vps_user || !vps_account) {
         showAlert("Vui lòng import curl VPS trước");
-        setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
+        setButtonInNormal(fetchVpsListBtn);
         return;
       }
 
@@ -554,13 +592,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             renderTable(response.headers, response.rows);
             showCustomToast(fetchVpsListBtn, "Portfolio Updated", "button");
           }
-          setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
+          setButtonInNormal(fetchVpsListBtn);
         },
       );
     } catch (err) {
       console.error("[FETCH_VPS_LIST]", err);
       showAlert("Có lỗi xảy ra");
-      setButtonInNormal(fetchVpsListBtn, "Fetch VPS List");
+      setButtonInNormal(fetchVpsListBtn);
     }
   });
 
@@ -588,7 +626,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         top,
       },
       () => {
-        setButtonInNormal(inputSsiTokenUpdateBtn, "Update SSI Token");
+        setButtonInNormal(inputSsiTokenUpdateBtn);
       },
     );
   });
@@ -609,7 +647,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!ssi_device_id || !ssi_token || !ssi_account) {
         showAlert("Vui lòng import curl SSI trước");
-        setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
+        setButtonInNormal(fetchSsiListBtn);
         return;
       }
 
@@ -628,13 +666,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             renderTable(response.headers, response.rows);
             showCustomToast(fetchSsiListBtn, "Portfolio Updated", "button");
           }
-          setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
+          setButtonInNormal(fetchSsiListBtn);
         },
       );
     } catch (err) {
       console.error("[FETCH_SSI_LIST]", err);
       showAlert("Có lỗi xảy ra");
-      setButtonInNormal(fetchSsiListBtn, "Fetch SSI List");
+      setButtonInNormal(fetchSsiListBtn);
     }
   });
   // ==============================
@@ -643,38 +681,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   chrome.runtime.onMessage.addListener((message) => {
     switch (message.type) {
-      case "GET_FIREANT_DONE":
-        setButtonInNormal(getFireantBtn, "Get Fireant");
-        break;
-
       case "IMPORT_FIREANT_DONE":
-        setButtonInNormal(importFireantBtn, "Import Fireant");
+        setButtonInNormal(importFireantBtn);
         window.close();
-        break;
-
-      case "CLEAR_FIREANT_DONE":
-        setButtonInNormal(clearFireantBtn, "Clear Fireant");
-        break;
-
-      case "GET_VNDIRECT_DONE":
-        setButtonInNormal(getVndBtn, "Get Vndirect");
         break;
 
       case "IMPORT_VNDIRECT_DONE":
-        setButtonInNormal(importVndBtn, "Import Vndirect");
+        setButtonInNormal(importVndBtn);
         window.close();
-        break;
-
-      case "CLEAR_VNDIRECT_DONE":
-        setButtonInNormal(clearVndBtn, "Clear Vndirect");
-        break;
-
-      case "GET_VPS_LIST_DONE":
-        setButtonInNormal(getVPSListBtn, "Get VPS List");
-        break;
-
-      case "GET_VND_LIST_DONE":
-        setButtonInNormal(getVndListBtn, "Get VND List");
         break;
 
       default:
