@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const autoVpsTokenUpdateBtn = document.getElementById("autoVpsTokenUpdate");
   const autoSsiTokenUpdateBtn = document.getElementById("autoSsiTokenUpdate");
   const result = document.getElementById("result");
+  const addSymVndChartBtn = document.getElementById("addSymVndChart");
 
   let activeTabId = null;
 
@@ -202,7 +203,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     if (!tab?.url?.includes("fireant.vn/")) {
       showAlert(
-        "Vui lòng mở trang https://fireant.vn/dashboard + mở Watchlist rồi thử lại.",
+        `Để lấy dữ liệu cần mở trang Fireant + mở Watchlist:
+         
+          https://fireant.vn/dashboard`,
       );
       return;
     }
@@ -277,7 +280,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!tab?.url?.includes("trade.vndirect.com.vn/chung-khoan/danh-muc")) {
       showAlert(
-        "Vui lòng mở trang https://trade.vndirect.com.vn/chung-khoan/danh-muc rồi thử lại.",
+        `Để lấy dữ liệu cần mở trang Danh mục của VNDirect:
+            https://trade.vndirect.com.vn/chung-khoan/danh-muc`,
       );
       return;
     }
@@ -291,10 +295,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         stockListText.value = text;
         chrome.storage.local.set({ stockList: text });
         setButtonInNormal(getVndBtn);
-      } else {
-        showAlert(
-          "Vui lòng mở trang https://trade.vndirect.com.vn/ và thử lại.",
-        );
       }
     });
   });
@@ -349,7 +349,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (tab.url !== "https://smartoneweb.vps.com.vn/assets-normal") {
       showAlert(
-        "Vui lòng mở trang Danh mục của VPS (https://smartoneweb.vps.com.vn/assets-normal để lấy dữ liệu.",
+        `Để lấy dữ liệu cần mở trang Danh mục của VPS:
+         
+        https://smartoneweb.vps.com.vn/assets-normal`,
       );
       return;
     }
@@ -415,7 +417,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (tab.url !== "https://trade.vndirect.com.vn/giao-dich/danh-muc") {
       showAlert(
-        "Vui lòng mở trang Danh mục của VNDirect (https://trade.vndirect.com.vn/giao-dich/danh-muc) để lấy dữ liệu.",
+        `Vui lòng mở trang của VNDirect:
+
+             https://trade.vndirect.com.vn/giao-dich/danh-muc `,
       );
       return;
     }
@@ -454,6 +458,59 @@ document.addEventListener("DOMContentLoaded", async () => {
       showCustomToast(getVndListBtn, "Copied to clipboard", "button");
       setButtonInNormal(getVndListBtn);
     });
+  });
+  // ==============================
+  // ▶ ADD SYMBOLS TO VND CHART
+  // ==============================
+  addSymVndChartBtn.addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (
+      tab.url !==
+      "https://dchart.vndirect.com.vn/?symbol=DCM&domain=https%3A%2F%2Ftrade.vndirect.com.vn&timeframe=D&language=vi&theme=dark&disablesyncsymbol=true&&indicator=&ignoreIndicator=ma,ema,macd,rsi,boll&autosave=true"
+    ) {
+      showAlert(
+        `Vui lòng thực hiện các bước sau:
+
+            1. Đăng nhập VNDirect
+
+            2. Mở trang biểu đồ:
+            https://dchart.vndirect.com.vn/?symbol=DCM&domain=https%3A%2F%2Ftrade.vndirect.com.vn&timeframe=D&language=vi&theme=dark&disablesyncsymbol=true&&indicator=&ignoreIndicator=ma,ema,macd,rsi,boll&autosave=true
+            
+            Sau đó thử lại.`,
+      );
+      return;
+    }
+
+    const symbols = stockListText.value
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+
+    if (!symbols.length) {
+      setButtonInNormal(addSymVndChartBtn);
+      return;
+    }
+
+    setButtonInProcessing(addSymVndChartBtn);
+
+    const tabId = tab.id;
+
+    chrome.tabs.sendMessage(
+      tabId,
+      { type: "ADD_SYMBOLS_TO_VND_CHART", symbols },
+      async (res) => {
+        if (res?.error) {
+          showAlert(res.error);
+          result.textContent = "❌ " + res.error;
+          setButtonInNormal(addSymVndChartBtn);
+          return;
+        }
+      },
+    );
   });
 
   // ==============================
@@ -690,6 +747,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         setButtonInNormal(importVndBtn);
         window.close();
         break;
+      case "ADD_SYMBOLS_TO_VND_CHART_DONE":
+        showCustomToast(addSymVndChartBtn, "Finished", "button");
+        setButtonInNormal(addSymVndChartBtn);
+        window.close();
 
       default:
         break;

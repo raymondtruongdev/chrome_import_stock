@@ -98,6 +98,76 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
   }
 
+  async function addSymbolChartVndirect(symbols, sendResponse) {
+    // B1: Đăng nhập VND
+    // B2: Mở trang: https://dchart.vndirect.com.vn/?symbol=DCM&domain=https%3A%2F%2Ftrade.vndirect.com.vn&timeframe=D&language=vi&theme=dark&disablesyncsymbol=true&&indicator=&ignoreIndicator=ma,ema,macd,rsi,boll&autosave=true
+    // B3: Load chart xong mới bấm nút
+
+    let iframe = null;
+    // Do Chart được nhúng dưới dạng iframe, nên chúng ta cần tìm đúng iframe chứa chart của VNDirect để thao tác
+    const iframes = document.querySelectorAll("iframe");
+    for (const ifr of iframes) {
+      if (
+        ifr.name?.startsWith("tradingview") ||
+        ifr.src?.includes("dchart.vndirect.com.vn")
+      ) {
+        iframe = ifr;
+        break;
+      }
+    }
+    if (!iframe) {
+      sendResponse({ error: "Không tìm thấy TradingView iframe" });
+      return;
+    }
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+
+    if (!iframeDoc) {
+      sendResponse({ error: "Không truy cập được iframe document" });
+      return;
+    }
+
+    // button mở search
+    const symbolBtn = iframeDoc.querySelector(
+      '[data-tooltip="Tìm kiếm Mã giao dịch"]',
+    );
+
+    if (!symbolBtn) {
+      sendResponse({ error: "Không tìm thấy nút tìm kiếm symbol" });
+      return;
+    }
+
+    for (const symbol of symbols) {
+      // mở search popup
+      symbolBtn.click();
+
+      await sleep(200);
+
+      // Tìm và điền mã mới vào input search trong popup sau đó chọn kết quả đầu tiên
+      const input = iframeDoc.querySelector('input[data-role="search"]');
+
+      if (!input) {
+        sendResponse({ error: "Không tìm thấy search input" });
+        return;
+      }
+
+      input.focus();
+      input.value = symbol;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+
+      await sleep(500);
+
+      // chọn suggestion đầu tiên
+      const first = iframeDoc.querySelector('[data-role="list-item"]');
+
+      if (first) {
+        first.click();
+      }
+
+      await sleep(1000); // chờ chart load
+    }
+  }
+
   // ==================
   // Message Listener
   // ==================
@@ -149,6 +219,13 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     if (message.type === "IMPORT_TO_VNDIRECT") {
       addSymbolVndirect(message.symbols).then(() =>
         chrome.runtime.sendMessage({ type: "IMPORT_VNDIRECT_DONE" }),
+      );
+      return true;
+    }
+
+    if (message.type === "ADD_SYMBOLS_TO_VND_CHART") {
+      addSymbolChartVndirect(message.symbols, sendResponse).then (() =>
+         chrome.runtime.sendMessage({ type: "ADD_SYMBOLS_TO_VND_CHART_DONE" }),
       );
       return true;
     }
