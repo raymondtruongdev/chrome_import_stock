@@ -78,11 +78,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function showCustomToast(
-    anchorEl,
-    text = "Copied to clipboard",
-    mode = "corner",
-  ) {
+  function showCustomToast(anchorEl, text = "Copied to clipboard", mode = "corner") {
     const toast = document.createElement("div");
     toast.className = "copy-toast";
     toast.textContent = text;
@@ -133,10 +129,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (Array.isArray(headersOrTsv) && Array.isArray(rows)) {
       headers = headersOrTsv;
       dataRows = rows;
-    } else if (
-      typeof headersOrTsv === "string" &&
-      headersOrTsv.includes("\t")
-    ) {
+    } else if (typeof headersOrTsv === "string" && headersOrTsv.includes("\t")) {
       const lines = headersOrTsv.trim().split("\n");
       if (lines.length > 0) {
         headers = lines[0].split("\t");
@@ -166,9 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     result.innerHTML = html;
 
     // Cập nhật luôn textbox để tiện copy
-    const tsv = [headers.join("\t"), ...dataRows.map((r) => r.join("\t"))].join(
-      "\n",
-    );
+    const tsv = [headers.join("\t"), ...dataRows.map((r) => r.join("\t"))].join("\n");
     stockListText.value = tsv;
     chrome.storage.local.set({ stockList: tsv });
   }
@@ -213,20 +204,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     setButtonInProcessing(getFireantBtn);
     var text = [];
-    chrome.tabs.sendMessage(
-      tabId,
-      { type: "GET_STOCK_LIST_FIREANT" },
-      (res) => {
-        if (res?.error) {
-          result.textContent = res.error;
-        } else if (res?.symbols?.length) {
-          text = res.symbols.join(",");
-          stockListText.value = text;
-          chrome.storage.local.set({ stockList: text });
-        }
-        setButtonInNormal(getFireantBtn);
-      },
-    );
+    chrome.tabs.sendMessage(tabId, { type: "GET_STOCK_LIST_FIREANT" }, (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.symbols?.length) {
+        text = res.symbols.join(",");
+        stockListText.value = text;
+        chrome.storage.local.set({ stockList: text });
+      }
+      setButtonInNormal(getFireantBtn);
+    });
   });
 
   // ==============================
@@ -499,18 +486,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const tabId = tab.id;
 
-    chrome.tabs.sendMessage(
-      tabId,
-      { type: "ADD_SYMBOLS_TO_VND_CHART", symbols },
-      async (res) => {
-        if (res?.error) {
-          showAlert(res.error);
-          result.textContent = "❌ " + res.error;
-          setButtonInNormal(addSymVndChartBtn);
-          return;
-        }
-      },
-    );
+    chrome.tabs.sendMessage(tabId, { type: "ADD_SYMBOLS_TO_VND_CHART", symbols }, async (res) => {
+      if (res?.error) {
+        showAlert(res.error);
+        result.textContent = "❌ " + res.error;
+        setButtonInNormal(addSymVndChartBtn);
+        return;
+      }
+    });
   });
 
   // ==============================
@@ -550,10 +533,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchVndListBtn);
 
     try {
-      const { vnd_account, vnd_token } = await chrome.storage.local.get([
-        "vnd_account",
-        "vnd_token",
-      ]);
+      const { vnd_account, vnd_token } = await chrome.storage.local.get(["vnd_account", "vnd_token"]);
 
       if (!vnd_account || !vnd_token) {
         showAlert("Vui lòng import curl VND trước");
@@ -621,12 +601,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchVpsListBtn);
 
     try {
-      const { vps_session, vps_user, vps_account } =
-        await chrome.storage.local.get([
-          "vps_session",
-          "vps_user",
-          "vps_account",
-        ]);
+      const { vps_session, vps_user, vps_account } = await chrome.storage.local.get([
+        "vps_session",
+        "vps_user",
+        "vps_account",
+      ]);
 
       if (!vps_session || !vps_user || !vps_account) {
         showAlert("Vui lòng import curl VPS trước");
@@ -695,12 +674,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonInProcessing(fetchSsiListBtn);
 
     try {
-      const { ssi_device_id, ssi_token, ssi_account } =
-        await chrome.storage.local.get([
-          "ssi_device_id",
-          "ssi_token",
-          "ssi_account",
-        ]);
+      const { ssi_device_id, ssi_token, ssi_account } = await chrome.storage.local.get([
+        "ssi_device_id",
+        "ssi_token",
+        "ssi_account",
+      ]);
 
       if (!ssi_device_id || !ssi_token || !ssi_account) {
         showAlert("Vui lòng import curl SSI trước");
@@ -770,19 +748,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     result.textContent = "Đang bắt request...";
 
-    chrome.runtime.sendMessage(
-      { type: "GET_VND_AFTYPE_CURL", tabId: tab.id },
-      (res) => {
-        if (res?.error) {
-          result.textContent = res.error;
-        } else if (res?.success) {
-          result.textContent = "✅ VND Token đã được cập nhật tự động!";
-          showCustomToast(autoVndTokenUpdateBtn, "VND Token Updated", "button");
-        } else {
-          result.textContent = "Không tìm thấy request /aftype";
-        }
-      },
-    );
+    chrome.runtime.sendMessage({ type: "GET_VND_AFTYPE_CURL", tabId: tab.id }, (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.success) {
+        result.textContent = "✅ VND Token đã được cập nhật tự động!";
+        showCustomToast(autoVndTokenUpdateBtn, "VND Token Updated", "button");
+      } else {
+        result.textContent = "Không tìm thấy request /aftype";
+      }
+    });
   });
 
   // ==============================
@@ -798,19 +773,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     result.textContent = "Đang bắt request VPS...";
 
-    chrome.runtime.sendMessage(
-      { type: "GET_VPS_GETACCOUNTINFO_CURL", tabId: tab.id },
-      (res) => {
-        if (res?.error) {
-          result.textContent = res.error;
-        } else if (res?.success) {
-          result.textContent = "✅ VPS Token đã được cập nhật tự động!";
-          showCustomToast(autoVpsTokenUpdateBtn, "VPS Token Updated", "button");
-        } else {
-          result.textContent = "Không tìm thấy request /getAccountInfo";
-        }
-      },
-    );
+    chrome.runtime.sendMessage({ type: "GET_VPS_GETACCOUNTINFO_CURL", tabId: tab.id }, (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.success) {
+        result.textContent = "✅ VPS Token đã được cập nhật tự động!";
+        showCustomToast(autoVpsTokenUpdateBtn, "VPS Token Updated", "button");
+      } else {
+        result.textContent = "Không tìm thấy request /getAccountInfo";
+      }
+    });
   });
 
   // ==============================
@@ -826,22 +798,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabId = tab.id;
     // SSI token is stored in localStorage of ssi website, we can read it directly with 'content.js'
     // , no need to use debugger to capture request like VND/VPS
-    chrome.tabs.sendMessage(
-      tabId,
-      { type: "AUTO_FIND_SSI_TOKEN" },
-      async (res) => {
-        if (res?.error) {
-          result.textContent = res.error;
-        } else if (res?.success) {
-          result.textContent = "✅ SSI Token đã được cập nhật tự động!";
-          showCustomToast(autoSsiTokenUpdateBtn, "SSI Token Updated", "button");
-          chrome.storage.local.set({
-            ssi_account: res.ssi_account + "1", // Hardcode SSI account 1
-            ssi_token: res.ssi_token,
-            ssi_device_id: res.ssi_device_id,
-          });
-        }
-      },
-    );
+    chrome.tabs.sendMessage(tabId, { type: "AUTO_FIND_SSI_TOKEN" }, async (res) => {
+      if (res?.error) {
+        result.textContent = res.error;
+      } else if (res?.success) {
+        result.textContent = "✅ SSI Token đã được cập nhật tự động!";
+        showCustomToast(autoSsiTokenUpdateBtn, "SSI Token Updated", "button");
+        chrome.storage.local.set({
+          ssi_account: res.ssi_account + "1", // Hardcode SSI account 1
+          ssi_token: res.ssi_token,
+          ssi_device_id: res.ssi_device_id,
+        });
+      }
+    });
   });
 });

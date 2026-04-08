@@ -12,8 +12,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   // ==================
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const normalizeText = (text = "") =>
-    text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  const normalizeText = (text = "") => text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
 
   // ==================
   // FireAnt helpers
@@ -45,9 +44,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     const delay = 200;
     const inputSelector = 'input[placeholder="Thêm mã CK vào watchlist..."]';
 
-    const addBtn = [...document.querySelectorAll("button")].find(
-      (btn) => btn.textContent.trim() === "Thêm mã CK",
-    );
+    const addBtn = [...document.querySelectorAll("button")].find((btn) => btn.textContent.trim() === "Thêm mã CK");
 
     addBtn?.click();
     await sleep(100);
@@ -74,13 +71,9 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
   }
 
   async function addSymbolVndirect(symbols) {
-    const input = document.querySelector(
-      'input.react-autosuggest__input[placeholder="Nhập mã CK..."]',
-    );
+    const input = document.querySelector('input.react-autosuggest__input[placeholder="Nhập mã CK..."]');
 
-    const addBtn = document
-      .querySelector('button.button[type="submit"] i.fa-plus')
-      ?.closest("button");
+    const addBtn = document.querySelector('button.button[type="submit"] i.fa-plus')?.closest("button");
 
     for (const symbol of symbols) {
       if (!input) break;
@@ -107,10 +100,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // Do Chart được nhúng dưới dạng iframe, nên chúng ta cần tìm đúng iframe chứa chart của VNDirect để thao tác
     const iframes = document.querySelectorAll("iframe");
     for (const ifr of iframes) {
-      if (
-        ifr.name?.startsWith("tradingview") ||
-        ifr.src?.includes("dchart.vndirect.com.vn")
-      ) {
+      if (ifr.name?.startsWith("tradingview") || ifr.src?.includes("dchart.vndirect.com.vn")) {
         iframe = ifr;
         break;
       }
@@ -128,9 +118,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
 
     // button mở search
-    const symbolBtn = iframeDoc.querySelector(
-      '[data-tooltip="Tìm kiếm Mã giao dịch"]',
-    );
+    const symbolBtn = iframeDoc.querySelector('[data-tooltip="Tìm kiếm Mã giao dịch"]');
 
     if (!symbolBtn) {
       sendResponse({ error: "Không tìm thấy nút tìm kiếm symbol" });
@@ -187,9 +175,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
 
     if (message.type === "IMPORT_TO_FIREANT") {
-      addSymbolFireant(message.symbols).then(() =>
-        chrome.runtime.sendMessage({ type: "IMPORT_FIREANT_DONE" }),
-      );
+      addSymbolFireant(message.symbols).then(() => chrome.runtime.sendMessage({ type: "IMPORT_FIREANT_DONE" }));
       return true;
     }
 
@@ -209,23 +195,19 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     // ========= VNDIRECT =========
     if (message.type === "GET_STOCK_LIST_VND") {
       const tbody = document.getElementById("banggia-khop-lenh-body");
-      const symbols = tbody
-        ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean)
-        : [];
+      const symbols = tbody ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean) : [];
       sendResponse({ symbols });
       return true;
     }
 
     if (message.type === "IMPORT_TO_VNDIRECT") {
-      addSymbolVndirect(message.symbols).then(() =>
-        chrome.runtime.sendMessage({ type: "IMPORT_VNDIRECT_DONE" }),
-      );
+      addSymbolVndirect(message.symbols).then(() => chrome.runtime.sendMessage({ type: "IMPORT_VNDIRECT_DONE" }));
       return true;
     }
 
     if (message.type === "ADD_SYMBOLS_TO_VND_CHART") {
-      addSymbolChartVndirect(message.symbols, sendResponse).then (() =>
-         chrome.runtime.sendMessage({ type: "ADD_SYMBOLS_TO_VND_CHART_DONE" }),
+      addSymbolChartVndirect(message.symbols, sendResponse).then(() =>
+        chrome.runtime.sendMessage({ type: "ADD_SYMBOLS_TO_VND_CHART_DONE" }),
       );
       return true;
     }
@@ -240,9 +222,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         return;
       }
 
-      const symbols = tbody
-        ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean)
-        : [];
+      const symbols = tbody ? [...tbody.querySelectorAll("tr")].map((tr) => tr.id).filter(Boolean) : [];
 
       console.log("[CONTENT] Symbols:", symbols);
 
@@ -285,15 +265,11 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         })
         .filter(Boolean);
 
-      const body =
-        table.querySelector('tbody[data-testid="portfolio-table-body"]') ||
-        table.querySelector("tbody");
+      const body = table.querySelector('tbody[data-testid="portfolio-table-body"]') || table.querySelector("tbody");
 
       const rows = body
         ? [...body.querySelectorAll("tr")].map((tr) =>
-            [...tr.querySelectorAll("td")].map((td) =>
-              normalizeText(td.textContent || td.innerText),
-            ),
+            [...tr.querySelectorAll("td")].map((td) => normalizeText(td.textContent || td.innerText)),
           )
         : [];
       // The first row VPS retunrs is Total row, we can ignore it if it's the only row
@@ -330,9 +306,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       const body = table.querySelector("tbody");
       const rows = body
         ? [...body.querySelectorAll("tr")].map((tr) =>
-            [...tr.querySelectorAll("td")].map((td) =>
-              normalizeText(td.textContent || td.innerText),
-            ),
+            [...tr.querySelectorAll("td")].map((td) => normalizeText(td.textContent || td.innerText)),
           )
         : [];
 
