@@ -138,10 +138,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         const json = await res.json();
+        // const headers = ["symbol", "quantity", "averagePrice", "currentPrice"];
+        // const rows = (json.hits || []).map((item) =>
+        //   headers.map((h) => item[h] || ""),
+        // );
+
         const headers = ["symbol", "quantity", "averagePrice", "currentPrice"];
-        const rows = (json.hits || []).map((item) =>
-          headers.map((h) => item[h] || ""),
-        );
+        const rows = (json.hits || []).map((item) => [
+          item.symbol ?? "",
+          item.quantity ?? 0,
+          item.costPriceApi ?? 0, // map costPriceApi -> averagePrice
+          item.currentPrice ?? 0,
+        ]);
 
         const tsv = buildTSVFromData(headers, rows);
         sendResponse({ headers, rows, tsv });
