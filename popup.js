@@ -24,6 +24,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const result = document.getElementById("result");
   const addSymVndChartBtn = document.getElementById("addSymVndChart");
 
+  const getVpsBtn = document.getElementById("getVpsBtn");
+  const importVpsBtn = document.getElementById("importVpsBtn");
+  const clearVpsBtn = document.getElementById("clearVpsBtn");
+
   let activeTabId = null;
 
   // ==============================
@@ -322,6 +326,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         result.textContent = "✅ VNDIRECT Symbols cleared!";
       }
       setButtonInNormal(clearVndBtn);
+    });
+  });
+
+  // ==============================
+  // ▶ IMPORT SYMBOLS TO VPS
+  // ==============================
+  importVpsBtn.addEventListener("click", async () => {
+    setButtonInProcessing(importVpsBtn);
+
+    const symbols = stockListText.value
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+
+    if (!symbols.length) {
+      setButtonInNormal(importVndBtn);
+      return;
+    }
+
+    const tabId = await initActiveTab();
+
+    chrome.tabs.sendMessage(tabId, {
+      type: "IMPORT_TO_VPS",
+      symbols,
     });
   });
 

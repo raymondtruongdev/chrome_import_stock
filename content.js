@@ -247,6 +247,134 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
       return true; // keep message channel alive
     }
 
+    // ====================================
+    // ▶ IMPORT LIST VPS
+    // ====================================
+    // async function addSymbolVPS(symbols) {
+    //   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    //   for (const symbol of symbols) {
+    //     const input = document.querySelector('input[name="search"]');
+
+    //     if (!input) {
+    //       console.log("[AUTO] Không tìm thấy input");
+    //       return;
+    //     }
+
+    //     // ===== 1. Reset + focus =====
+    //     input.focus();
+    //     input.value = "";
+    //     input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    //     // ===== 2. Gõ từng ký tự (simulate user typing) =====
+    //     for (const char of symbol) {
+    //       input.value += char;
+
+    //       input.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true }));
+    //       input.dispatchEvent(new Event("input", { bubbles: true }));
+    //       input.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true }));
+
+    //       await sleep(120); // chỉnh nếu cần
+    //     }
+
+    //     console.log("[AUTO] Typed:", symbol);
+
+    //     // ===== 3. Đợi listbox xuất hiện =====
+    //     let firstItem = null;
+    //     const start = Date.now();
+
+    //     while (Date.now() - start < 2000) {
+    //       firstItem = document.querySelector('[role="listbox"] [role="option"]');
+    //       if (firstItem) break;
+    //       await sleep(100);
+    //     }
+
+    //     // ===== 4. Chọn item đầu tiên =====
+    //     if (firstItem) {
+    //       // cách 1: click
+    //       firstItem.click();
+
+    //       // cách 2 (ổn định hơn nếu click fail):
+    //       // input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    //       // input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    //       console.log("[AUTO] Selected:", symbol);
+    //     } else {
+    //       console.log("[AUTO] Không thấy kết quả:", symbol);
+    //     }
+
+    //     // ===== 5. Delay giữa các lần =====
+    //     await sleep(500);
+    //   }
+    // }
+    async function addSymbolVPS(symbols) {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+
+      for (const symbol of symbols) {
+        const input = document.querySelector('input[name="search"]');
+
+        if (!input) {
+          console.log("[AUTO] Không tìm thấy input");
+          return;
+        }
+
+        // ===== 1. Focus =====
+        input.focus();
+
+        // ===== 2. Clear input bằng native setter =====
+        nativeSetter.call(input, "");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+
+        // ===== 3. Gõ từng ký tự (REAL typing) =====
+        for (const char of symbol) {
+          // set value qua native setter
+          nativeSetter.call(input, input.value + char);
+
+          // fire event đúng thứ tự
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: char, bubbles: true }));
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent("keyup", { key: char, bubbles: true }));
+
+          await sleep(150);
+        }
+
+        console.log("[AUTO] Typed:", symbol);
+
+        // ===== 4. Đợi listbox =====
+        let firstItem = null;
+        const start = Date.now();
+
+        while (Date.now() - start < 3000) {
+          firstItem = document.querySelector('[role="listbox"] [role="option"]');
+          if (firstItem) break;
+          await sleep(100);
+        }
+
+        // ===== 5. Select =====
+        if (firstItem) {
+          // Cách 1: click
+          firstItem.click();
+
+          // Cách 2 (backup giống user hơn):
+          // input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+          // input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+          console.log("[AUTO] Selected:", symbol);
+        } else {
+          console.log("[AUTO] Không thấy listbox:", symbol);
+        }
+
+        await sleep(500);
+      }
+    }
+
+    if (message.type === "IMPORT_TO_VPS") {
+      addSymbolVPS(message.symbols).then(() => chrome.runtime.sendMessage({ type: "IMPORT_VPS_DONE" }));
+      return true;
+    }
+
     // ========= VPS =========
     if (message.type === "GET_VPS_LIST") {
       const table =
