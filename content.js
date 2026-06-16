@@ -180,7 +180,8 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
 
     if (message.type === "CLEAR_FIREANT") {
-      const symbols = [...document.querySelectorAll("div.sc-eLoUSf.iTbAOj")]
+      // const symbols = [...document.querySelectorAll("sc-kkZjDP iXDapN list-striped-row-even bp5-context-menu")]
+      const symbols = [...document.querySelectorAll("div.bp5-context-menu")]
         .map((div) => div.querySelector("a")?.textContent.trim())
         .filter((text) => text && text.length === 3);
 
@@ -188,6 +189,7 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
         sendResponse({ error: "[CONTENT] FireAnt symbols not found" });
         return;
       }
+      // Trong file Ant add sẽ toogle việc thêm/xóa một symbol
       addSymbolFireant(symbols).then(() => sendResponse({ success: true }));
       return true;
     }
