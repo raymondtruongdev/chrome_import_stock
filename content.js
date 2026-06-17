@@ -91,6 +91,70 @@ if (window.__CONTENT_SCRIPT_LOADED__) {
     }
   }
 
+  async function addChartStyle(symbol, sendResponse) {
+    let iframe = null;
+    // Do Chart được nhúng dưới dạng iframe, nên chúng ta cần tìm đúng iframe chứa chart của VNDirect để thao tác
+    const iframes = document.querySelectorAll("iframe");
+    for (const ifr of iframes) {
+      if (ifr.name?.startsWith("tradingview") || ifr.src?.includes("dchart.vndirect.com.vn")) {
+        iframe = ifr;
+        break;
+      }
+    }
+    if (!iframe) {
+      sendResponse({ error: "Không tìm thấy TradingView iframe" });
+      return;
+    }
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      sendResponse({ error: "Không truy cập được iframe document" });
+      return;
+    }
+    // Tìm và điền mã mới vào input search trong popup sau đó chọn kết quả đầu tiên
+    const input = iframeDoc.querySelector('input[data-role="search"]');
+    if (!input) {
+      sendResponse({ error: "Không tìm thấy search input" });
+      return;
+    }
+    input.focus();
+    input.value = "VCK"; //symbol;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(500);
+    // chọn suggestion đầu tiên
+    const first = iframeDoc.querySelector('[data-role="list-item"]');
+    if (first) {
+      first.click();
+    }
+    await sleep(1000);
+  }
+
+  async function addSymbolChartVndirect_v2_notrun(symbols, sendResponse) {
+    // B1: Đăng nhập VND
+    // B2: Mở trang: https://dchart.vndirect.com.vn/?symbol=DCM&domain=https%3A%2F%2Ftrade.vndirect.com.vn&timeframe=D&language=vi&theme=dark&disablesyncsymbol=true&&indicator=&ignoreIndicator=ma,ema,macd,rsi,boll&autosave=true
+    // B3: Load chart xong mới bấm nút
+
+    const rows = document.querySelectorAll("#banggia-khop-lenh-body tr");
+
+    for (const row of rows) {
+      // Click vào mã để mở chart
+      const symbolOpenChart = row.querySelector("td:first-child a.symbol");
+      const symbol = row?.id;
+      if (!symbolOpenChart) continue;
+      symbolOpenChart.click();
+      await sleep(1000);
+
+      addChartStyle(symbol, sendResponse);
+
+      // Close chart by clicking outside the chart area
+      const x = 50;
+      const y = window.innerHeight - 50;
+      const el = document.elementFromPoint(x, y);
+      el?.click();
+      await sleep(1000);
+    }
+    return;
+  }
+
   async function addSymbolChartVndirect(symbols, sendResponse) {
     // B1: Đăng nhập VND
     // B2: Mở trang: https://dchart.vndirect.com.vn/?symbol=DCM&domain=https%3A%2F%2Ftrade.vndirect.com.vn&timeframe=D&language=vi&theme=dark&disablesyncsymbol=true&&indicator=&ignoreIndicator=ma,ema,macd,rsi,boll&autosave=true
